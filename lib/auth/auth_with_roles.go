@@ -50,6 +50,7 @@ import (
 	trustpb "github.com/gravitational/teleport/api/gen/proto/go/teleport/trust/v1"
 	userpreferencespb "github.com/gravitational/teleport/api/gen/proto/go/userpreferences/v1"
 	"github.com/gravitational/teleport/api/internalutils/stream"
+	"github.com/gravitational/teleport/api/metadata"
 	"github.com/gravitational/teleport/api/types"
 	apievents "github.com/gravitational/teleport/api/types/events"
 	"github.com/gravitational/teleport/api/types/wrappers"
@@ -280,6 +281,45 @@ func hasRemoteUserRole(authContext authz.Context) bool {
 func hasLocalUserRole(authContext authz.Context) bool {
 	_, ok := authContext.UnmappedIdentity.(authz.LocalUser)
 	return ok
+}
+
+// verifyAdminActionMFAFromContext checks if a valid MFA challenge response was passed through the request context.
+func (a *ServerWithRoles) verifyAdminActionMFAFromContext(ctx context.Context) error {
+	// Builtin roles do not require MFA to perform admin actions.
+	switch a.context.Identity.(type) {
+	case authz.BuiltinRole, authz.RemoteBuiltinRole:
+		return nil
+	}
+
+	// TODO (Joerger): Skip mfa if the identity is being impersonated by the Bot or Admin built in role.
+
+	authpref, err := a.authServer.GetAuthPreference(ctx)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
+	// Admin actions do not require MFA when MFA is not enabled.
+	if authpref.GetSecondFactor() == constants.SecondFactorOff {
+		return nil
+	}
+
+	mfaResp, err := metadata.MFACredentialsFromContext(ctx)
+	if trace.IsNotFound(err) {
+		// If no mfa response is set in the context, assume that the client is old
+		// and does not know how to provide it.
+		//
+		// TODO IN 15.0.0 (Joerger). return client.ErrAdminActionMFARequired instead.
+		// Teleport 14+ clients will provide MFA after receiving this error.
+		return nil
+	} else if err != nil {
+		return trace.Wrap(client.ErrAdminActionMFARequired, "failed to retrieve MFA credentials from context with error: %v", err)
+	}
+
+	if _, _, err := a.authServer.validateMFAAuthResponse(ctx, mfaResp, a.context.User.GetName(), false); err != nil {
+		return trace.Wrap(client.ErrAdminActionMFARequired, err.Error())
+	}
+
+	return nil
 }
 
 // DevicesClient allows ServerWithRoles to implement ClientI.
