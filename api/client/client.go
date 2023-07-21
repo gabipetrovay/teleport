@@ -108,6 +108,9 @@ type Client struct {
 	// closedFlag is set to indicate that the connection is closed.
 	// It's a pointer to allow the Client struct to be copied.
 	closedFlag *int32
+	// lastPing is a cached ping response.
+	lastPing   *proto.PingResponse
+	lastPingMu sync.Mutex
 }
 
 // New creates a new Client with an open connection to a Teleport server.
@@ -120,8 +123,8 @@ type Client struct {
 // unless LoadProfile is used to fetch Credentials and load a web proxy dialer.
 //
 // See the example below for usage.
-func New(ctx context.Context, cfg Config) (clt *Client, err error) {
-	if err = cfg.CheckAndSetDefaults(); err != nil {
+func New(ctx context.Context, cfg Config) (*Client, error) {
+	if err := cfg.CheckAndSetDefaults(); err != nil {
 		return nil, trace.Wrap(err)
 	}
 
@@ -131,6 +134,7 @@ func New(ctx context.Context, cfg Config) (clt *Client, err error) {
 	if cfg.DialInBackground {
 		return connectInBackground(ctx, cfg)
 	}
+
 	return connect(ctx, cfg)
 }
 
@@ -450,6 +454,7 @@ func (c *Client) dialGRPC(ctx context.Context, addr string) error {
 		grpc.WithChainUnaryInterceptor(
 			otelgrpc.UnaryClientInterceptor(),
 			metadata.UnaryClientInterceptor,
+			c.RetryWithMFAUnaryInterceptor,
 			breaker.UnaryClientInterceptor(cb),
 		),
 		grpc.WithChainStreamInterceptor(
@@ -586,6 +591,8 @@ type Config struct {
 	// PROXYHeaderGetter returns signed PROXY header that is sent to allow Proxy to propagate client's real IP to the
 	// auth server from the Proxy's web server, when we create user's client for the web session.
 	PROXYHeaderGetter PROXYHeaderGetter
+	// PromptAdminRequestMFA is used to prompt the user for MFA on admin requests when needed.
+	PromptAdminRequestMFA func(ctx context.Context, chall *proto.MFAAuthenticateChallenge, proxyAddr string) (*proto.MFAAuthenticateResponse, error)
 }
 
 // CheckAndSetDefaults checks and sets default config values.
@@ -628,6 +635,7 @@ func (c *Config) CheckAndSetDefaults() error {
 			grpc.WithReturnConnectionError(),
 		)
 	}
+
 	return nil
 }
 
@@ -769,6 +777,25 @@ func (c *Client) Ping(ctx context.Context) (proto.PingResponse, error) {
 	if err != nil {
 		return proto.PingResponse{}, trail.FromGRPC(err)
 	}
+
+	return *rsp, nil
+}
+
+// Ping gets basic info about the auth server and caches the info for future requests.
+func (c *Client) PingWithCache(ctx context.Context) (proto.PingResponse, error) {
+	c.lastPingMu.Lock()
+	defer c.lastPingMu.Unlock()
+
+	if c.lastPing != nil {
+		return *c.lastPing, nil
+	}
+
+	rsp, err := c.grpc.Ping(ctx, &proto.PingRequest{})
+	if err != nil {
+		return proto.PingResponse{}, trail.FromGRPC(err)
+	}
+
+	c.lastPing = rsp
 	return *rsp, nil
 }
 

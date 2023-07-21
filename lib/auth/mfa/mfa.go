@@ -303,3 +303,10 @@ func MakeRegisterChallenge(protoChal *proto.MFARegisterChallenge) *MFARegisterCh
 	}
 	return nil
 }
+
+// PromptMFAForAdminRequest calls the standard MFA prompt for admin API requests.
+func PromptMFAForAdminRequest(ctx context.Context, chall *proto.MFAAuthenticateChallenge, proxyAddr string) (*proto.MFAAuthenticateResponse, error) {
+	return PromptMFAChallenge(ctx, chall, proxyAddr, &PromptMFAChallengeOpts{
+		HintBeforePrompt: "MFA is required for admin-level API request.",
+	})
+}

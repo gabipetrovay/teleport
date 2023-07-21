@@ -2844,19 +2844,8 @@ func (tc *TeleportClient) ConnectToCluster(ctx context.Context) (*ClusterClient,
 		cluster = connected
 	}
 
-	pr, err := tc.Ping(ctx)
-	if err != nil {
-		return nil, trace.Wrap(err)
-	}
+	aclt, err := auth.NewClient(pclt.ClientConfig(ctx, cluster))
 
-	authCfg := pclt.ClientConfig(ctx, cluster)
-	if pr.Auth.SecondFactor != constants.SecondFactorOff {
-		authCfg.PromptMFA = func(ctx context.Context, chall *proto.MFAAuthenticateChallenge) (*proto.MFAAuthenticateResponse, error) {
-			return tc.PromptMFAChallenge(ctx, "" /* proxyAddr */, chall, nil)
-		}
-	}
-
-	aclt, err := auth.NewClient(authCfg)
 	if err != nil {
 		return nil, trace.NewAggregate(err, pclt.Close())
 	}
@@ -5053,6 +5042,7 @@ func (tc *TeleportClient) NewKubernetesServiceClient(ctx context.Context, cluste
 		},
 		ALPNConnUpgradeRequired:  tc.TLSRoutingConnUpgradeRequired,
 		InsecureAddressDiscovery: tc.InsecureSkipVerify,
+		PromptAdminRequestMFA:    mfa.PromptMFAForAdminRequest,
 	})
 	if err != nil {
 		return nil, trace.Wrap(err)
