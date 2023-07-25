@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/gravitational/trace"
@@ -22,7 +23,10 @@ type Player struct {
 	sessionID session.ID
 	streamer  Streamer
 
+	speed atomic.Value
+
 	emit chan events.AuditEvent
+	done chan struct{}
 
 	// playPause holds a channel to be closed when
 	// the player transitions from paused to playing,
@@ -32,8 +36,6 @@ type Player struct {
 	// and is inspired by "Rethinking Classical Concurrency Patterns"
 	// by Bryan C. Mills (GopherCon 2018): https://www.youtube.com/watch?v=5zXAHh5tJqQ
 	playPause chan chan struct{}
-
-	done chan struct{}
 }
 
 type Streamer interface {
@@ -79,6 +81,8 @@ func New(cfg *Config) (*Player, error) {
 		done:      make(chan struct{}),
 	}
 
+	p.speed.Store(float64(defaultPlaybackSpeed))
+
 	// start in a paused state
 	p.playPause <- make(chan struct{})
 
@@ -91,7 +95,22 @@ func New(cfg *Config) (*Player, error) {
 // that the player has been closed
 var errClosed = errors.New("player closed")
 
+const (
+	minPlaybackSpeed     = 0.25
+	defaultPlaybackSpeed = 1.0
+	maxPlaybackSpeed     = 16
+)
+
+func (p *Player) SetSpeed(s float64) error {
+	if s < minPlaybackSpeed || s > maxPlaybackSpeed {
+		return trace.BadParameter("speed %v is out of range", s)
+	}
+	p.speed.Store(s)
+	return nil
+}
+
 func (p *Player) stream() {
+	// TODO: consider using context instead of close chan?
 	eventsC, errC := p.streamer.StreamSessionEvents(context.TODO(), p.sessionID, 0)
 	lastDelay := int64(0)
 	for {
@@ -119,7 +138,6 @@ func (p *Player) stream() {
 
 			delay := getDelay(evt)
 			if delay > 0 && delay > lastDelay {
-				// TODO: scale delay based on playback speed
 				if err := p.applyDelay(time.Duration(delay-lastDelay) * time.Millisecond); err != nil {
 					close(p.emit)
 					return
@@ -173,10 +191,11 @@ func (p *Player) Play() error {
 // applyDelay "sleeps" for d in a manner that
 // can be canceled
 func (p *Player) applyDelay(d time.Duration) error {
+	scaled := float64(d) / p.speed.Load().(float64)
 	select {
 	case <-p.done:
 		return errClosed
-	case <-p.clock.After(d):
+	case <-p.clock.After(time.Duration(scaled)):
 		return nil
 	}
 }
@@ -229,6 +248,5 @@ func getDelay(e events.AuditEvent) int64 {
 	}
 }
 
-// TODO: set playback speed
 // TODO: seek forward
 // TODO: seek backward
