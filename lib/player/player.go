@@ -11,13 +11,14 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/gravitational/teleport/api/types/events"
+	"github.com/gravitational/teleport/lib/session"
 )
 
 type Player struct {
 	// read only config fields
 	clock     clockwork.Clock
 	log       logrus.FieldLogger
-	sessionID string
+	sessionID session.ID
 	streamer  Streamer
 
 	emit chan events.AuditEvent
@@ -33,14 +34,13 @@ type Player struct {
 }
 
 type Streamer interface {
-	// TODO: need to change session ID type to avoid importing lib/session here
-	StreamSessionEvents(ctx context.Context, sessionID string, startIndex int64) (chan events.AuditEvent, chan error)
+	StreamSessionEvents(ctx context.Context, sessionID session.ID, startIndex int64) (chan events.AuditEvent, chan error)
 }
 
 type Config struct {
 	Clock     clockwork.Clock
 	Log       logrus.FieldLogger
-	SessionID string
+	SessionID session.ID
 	Streamer  Streamer
 }
 
