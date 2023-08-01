@@ -28,6 +28,7 @@ import (
 	apidefaults "github.com/gravitational/teleport/api/defaults"
 	"github.com/gravitational/teleport/api/types"
 	"github.com/gravitational/teleport/api/types/accesslist"
+	"github.com/gravitational/teleport/api/types/secreports"
 	"github.com/gravitational/teleport/api/types/userloginstate"
 	"github.com/gravitational/teleport/lib/services"
 )
@@ -171,6 +172,10 @@ var _ collectionReader[any] = (*genericCollection[types.Resource, any, executor[
 type cacheCollections struct {
 	// byKind is a map of registered collections by resource Kind/SubKind
 	byKind map[resourceKind]collection
+
+	auditQueries     collectionReader[services.SecurityAuditQueryGetter]
+	secReports       collectionReader[services.SecurityReportGetter]
+	secReportsStates collectionReader[services.SecurityReportStateGetter]
 
 	accessLists              collectionReader[services.AccessListsGetter]
 	accessListMembers        collectionReader[services.AccessListMembersGetter]
@@ -604,6 +609,24 @@ func setupCollections(c *Cache, watches []types.WatchKind) (*cacheCollections, e
 			}
 			collections.accessLists = &genericCollection[*accesslist.AccessList, services.AccessListsGetter, accessListsExecutor]{cache: c, watch: watch}
 			collections.byKind[resourceKind] = collections.accessLists
+		case types.KindAuditQuery:
+			if c.SecReports == nil {
+				return nil, trace.BadParameter("missing parameter SecReports")
+			}
+			collections.auditQueries = &genericCollection[*secreports.AuditQuery, services.SecurityAuditQueryGetter, auditQueryExecutor]{cache: c, watch: watch}
+			collections.byKind[resourceKind] = collections.auditQueries
+		case types.KindSecurityReport:
+			if c.SecReports == nil {
+				return nil, trace.BadParameter("missing parameter KindSecurityReport")
+			}
+			collections.secReports = &genericCollection[*secreports.Report, services.SecurityReportGetter, secReportExecutor]{cache: c, watch: watch}
+			collections.byKind[resourceKind] = collections.secReports
+		case types.KindSecurityReportState:
+			if c.SecReports == nil {
+				return nil, trace.BadParameter("missing parameter KindSecurityReport")
+			}
+			collections.secReportsStates = &genericCollection[*secreports.ReportState, services.SecurityReportStateGetter, secReportStateExecutor]{cache: c, watch: watch}
+			collections.byKind[resourceKind] = collections.secReportsStates
 		case types.KindUserLoginState:
 			if c.UserLoginStates == nil {
 				return nil, trace.BadParameter("missing parameter UserLoginStates")
@@ -2371,7 +2394,140 @@ func (accessListsExecutor) getReader(cache *Cache, cacheOK bool) services.Access
 	return cache.Config.AccessLists
 }
 
-var _ executor[*accesslist.AccessList, services.AccessListsGetter] = accessListsExecutor{}
+type auditQueryExecutor struct{}
+
+func (auditQueryExecutor) getAll(ctx context.Context, cache *Cache, loadSecrets bool) ([]*secreports.AuditQuery, error) {
+	var out []*secreports.AuditQuery
+	var nextToken string
+	for {
+		var page []*secreports.AuditQuery
+		var err error
+
+		page, nextToken, err = cache.secReportsCache.ListSecurityAuditQueries(ctx, 0 /* default page size */, nextToken)
+		if err != nil {
+			return nil, trace.Wrap(err)
+		}
+		out = append(out, page...)
+		if nextToken == "" {
+			break
+		}
+	}
+	return out, nil
+}
+
+func (auditQueryExecutor) upsert(ctx context.Context, cache *Cache, resource *secreports.AuditQuery) error {
+	err := cache.secReportsCache.UpsertSecurityAuditQuery(ctx, resource)
+	return trace.Wrap(err)
+}
+
+func (auditQueryExecutor) deleteAll(ctx context.Context, cache *Cache) error {
+	return trace.Wrap(cache.secReportsCache.DeleteAllSecurityReports(ctx))
+}
+
+func (auditQueryExecutor) delete(ctx context.Context, cache *Cache, resource types.Resource) error {
+	return trace.Wrap(cache.secReportsCache.DeleteSecurityAuditQuery(ctx, resource.GetName()))
+}
+
+func (auditQueryExecutor) isSingleton() bool { return false }
+
+func (auditQueryExecutor) getReader(cache *Cache, cacheOK bool) services.SecurityAuditQueryGetter {
+	if cacheOK {
+		return cache.secReportsCache
+	}
+	return cache.Config.SecReports
+}
+
+var _ executor[*secreports.AuditQuery, services.SecurityAuditQueryGetter] = auditQueryExecutor{}
+
+type secReportExecutor struct{}
+
+func (secReportExecutor) getAll(ctx context.Context, cache *Cache, loadSecrets bool) ([]*secreports.Report, error) {
+	var out []*secreports.Report
+	var nextToken string
+	for {
+		var page []*secreports.Report
+		var err error
+
+		page, nextToken, err = cache.secReportsCache.ListSecurityReports(ctx, 0 /* default page size */, nextToken)
+		if err != nil {
+			return nil, trace.Wrap(err)
+		}
+		out = append(out, page...)
+		if nextToken == "" {
+			break
+		}
+	}
+	return out, nil
+}
+
+func (secReportExecutor) upsert(ctx context.Context, cache *Cache, resource *secreports.Report) error {
+	err := cache.secReportsCache.UpsertSecurityReport(ctx, resource)
+	return trace.Wrap(err)
+}
+
+func (secReportExecutor) deleteAll(ctx context.Context, cache *Cache) error {
+	return trace.Wrap(cache.secReportsCache.DeleteAllSecurityReports(ctx))
+}
+
+func (secReportExecutor) delete(ctx context.Context, cache *Cache, resource types.Resource) error {
+	return trace.Wrap(cache.secReportsCache.DeleteSecurityReport(ctx, resource.GetName()))
+}
+
+func (secReportExecutor) isSingleton() bool { return false }
+
+func (secReportExecutor) getReader(cache *Cache, cacheOK bool) services.SecurityReportGetter {
+	if cacheOK {
+		return cache.secReportsCache
+	}
+	return cache.Config.SecReports
+}
+
+var _ executor[*secreports.Report, services.SecurityReportGetter] = secReportExecutor{}
+
+type secReportStateExecutor struct{}
+
+func (secReportStateExecutor) getAll(ctx context.Context, cache *Cache, loadSecrets bool) ([]*secreports.ReportState, error) {
+	var out []*secreports.ReportState
+	var nextToken string
+	for {
+		var page []*secreports.ReportState
+		var err error
+
+		page, nextToken, err = cache.secReportsCache.ListSecurityReportsStates(ctx, 0 /* default page size */, nextToken)
+		if err != nil {
+			return nil, trace.Wrap(err)
+		}
+		out = append(out, page...)
+		if nextToken == "" {
+			break
+		}
+	}
+	return out, nil
+}
+
+func (secReportStateExecutor) upsert(ctx context.Context, cache *Cache, resource *secreports.ReportState) error {
+	err := cache.secReportsCache.UpsertSecurityReportsState(ctx, resource)
+	return trace.Wrap(err)
+}
+
+func (secReportStateExecutor) deleteAll(ctx context.Context, cache *Cache) error {
+	return trace.Wrap(cache.secReportsCache.DeleteAllSecurityReportsStates(ctx))
+}
+
+func (secReportStateExecutor) delete(ctx context.Context, cache *Cache, resource types.Resource) error {
+	return trace.Wrap(cache.secReportsCache.DeleteSecurityReportsState(ctx, resource.GetName()))
+}
+
+func (secReportStateExecutor) isSingleton() bool { return false }
+
+func (secReportStateExecutor) getReader(cache *Cache, cacheOK bool) services.SecurityReportStateGetter {
+	if cacheOK {
+		return cache.secReportsCache
+	}
+	return cache.Config.SecReports
+}
+
+var _ executor[*secreports.ReportState, services.SecurityReportStateGetter] = secReportStateExecutor{}
 
 // noopExecutor can be used when a resource's events do not need to processed by
 // the cache itself, only passed on to other watchers.

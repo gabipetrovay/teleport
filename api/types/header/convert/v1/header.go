@@ -47,11 +47,11 @@ func ToResourceHeaderProto(resourceHeader header.ResourceHeader) *headerv1.Resou
 // FromMetadataProto converts v1 metadata into an internal metadata object.
 func FromMetadataProto(msg *headerv1.Metadata) header.Metadata {
 	return header.Metadata{
-		Name:        msg.Name,
-		Description: msg.Description,
-		Labels:      msg.Labels,
-		Expires:     msg.Expires.AsTime(),
-		ID:          msg.Id,
+		Name:        msg.GetName(),
+		Description: msg.GetDescription(),
+		Labels:      msg.GetLabels(),
+		Expires:     msg.GetExpires().AsTime(),
+		ID:          msg.GetId(),
 	}
 }
 

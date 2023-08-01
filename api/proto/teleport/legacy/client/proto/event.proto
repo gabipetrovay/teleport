@@ -18,6 +18,7 @@ package proto;
 
 import "teleport/accesslist/v1/accesslist.proto";
 import "teleport/legacy/types/types.proto";
+import "teleport/secreports/v1/secreports.proto";
 import "teleport/userloginstate/v1/userloginstate.proto";
 
 option go_package = "github.com/gravitational/teleport/api/client/proto";
@@ -133,5 +134,11 @@ message Event {
     teleport.userloginstate.v1.UserLoginState UserLoginState = 46;
     // AccessListMember is an access list member resource.
     teleport.accesslist.v1.Member AccessListMember = 47;
+    // AuditQuery is an audit query resource.
+    teleport.secreports.v1.AuditQuery AuditQuery = 48;
+    // SecurityReport is a security report resource.
+    teleport.secreports.v1.Report Report = 49;
+    // SecurityReportState is a security report state resource.
+    teleport.secreports.v1.ReportState ReportState = 50;
   }
 }

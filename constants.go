@@ -669,6 +669,10 @@ const (
 	// during the setup of Connect My Computer. The prefix is followed by the name of the cluster
 	// user. See [teleterm.connectmycomputer.RoleSetup].
 	ConnectMyComputerRoleNamePrefix = "connect-my-computer-"
+
+	// PresetAccessMonitoringRoleName names a preset role that allows
+	// to access and run security reports and audit queries.
+	PresetAccessMonitoringRoleName = "access-monitoring"
 )
 
 var PresetRoles = []string{PresetEditorRoleName, PresetAccessRoleName, PresetAuditorRoleName}

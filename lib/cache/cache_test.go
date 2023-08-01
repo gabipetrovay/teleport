@@ -40,6 +40,7 @@ import (
 	"github.com/gravitational/teleport/api/types"
 	"github.com/gravitational/teleport/api/types/accesslist"
 	"github.com/gravitational/teleport/api/types/header"
+	"github.com/gravitational/teleport/api/types/secreports"
 	"github.com/gravitational/teleport/api/types/trait"
 	"github.com/gravitational/teleport/api/types/userloginstate"
 	"github.com/gravitational/teleport/lib/backend"
@@ -95,6 +96,7 @@ type testPack struct {
 	accessLists             services.AccessLists
 	userLoginStates         services.UserLoginStates
 	accessListMembers       services.AccessListMembers
+	secReports              services.SecReports
 }
 
 // testFuncs are functions to support testing an object in a cache.
@@ -259,6 +261,12 @@ func newPackWithoutCache(dir string, opts ...packOption) (*testPack, error) {
 	}
 	p.userLoginStates = ulsSvc
 
+	secReportsSvc, err := local.NewSecReportsService(p.backend, p.backend.Clock())
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	p.secReports = secReportsSvc
+
 	return p, nil
 }
 
@@ -298,6 +306,7 @@ func newPack(dir string, setupConfig func(c Config) Config, opts ...packOption) 
 		Integrations:            p.integrations,
 		AccessLists:             p.accessLists,
 		UserLoginStates:         p.userLoginStates,
+		SecReports:              p.secReports,
 		MaxRetryPeriod:          200 * time.Millisecond,
 		EventsC:                 p.eventsC,
 	}))
@@ -695,6 +704,7 @@ func TestCompletenessInit(t *testing.T) {
 			Integrations:            p.integrations,
 			AccessLists:             p.accessLists,
 			UserLoginStates:         p.userLoginStates,
+			SecReports:              p.secReports,
 			MaxRetryPeriod:          200 * time.Millisecond,
 			EventsC:                 p.eventsC,
 		}))
@@ -765,6 +775,7 @@ func TestCompletenessReset(t *testing.T) {
 		Integrations:            p.integrations,
 		AccessLists:             p.accessLists,
 		UserLoginStates:         p.userLoginStates,
+		SecReports:              p.secReports,
 		MaxRetryPeriod:          200 * time.Millisecond,
 		EventsC:                 p.eventsC,
 	}))
@@ -947,6 +958,7 @@ func TestListResources_NodesTTLVariant(t *testing.T) {
 		Integrations:            p.integrations,
 		AccessLists:             p.accessLists,
 		UserLoginStates:         p.userLoginStates,
+		SecReports:              p.secReports,
 		MaxRetryPeriod:          200 * time.Millisecond,
 		EventsC:                 p.eventsC,
 		neverOK:                 true, // ensure reads are never healthy
@@ -1028,6 +1040,7 @@ func initStrategy(t *testing.T) {
 		Integrations:            p.integrations,
 		AccessLists:             p.accessLists,
 		UserLoginStates:         p.userLoginStates,
+		SecReports:              p.secReports,
 		MaxRetryPeriod:          200 * time.Millisecond,
 		EventsC:                 p.eventsC,
 	}))
@@ -2123,6 +2136,87 @@ func TestAccessLists(t *testing.T) {
 	})
 }
 
+// TestAccessListRules tests that CRUD operations on access list rule resources are
+// replicated from the backend to the cache.
+func TestAuditQuery(t *testing.T) {
+	t.Parallel()
+
+	p := newTestPack(t, ForAuth)
+	t.Cleanup(p.Close)
+
+	testResources(t, p, testFuncs[*secreports.AuditQuery]{
+		newResource: func(name string) (*secreports.AuditQuery, error) {
+			return newAuditQuery(t, name), nil
+		},
+		create: func(ctx context.Context, item *secreports.AuditQuery) error {
+			err := p.secReports.UpsertSecurityAuditQuery(ctx, item)
+			return trace.Wrap(err)
+		},
+		list:      p.secReports.GetSecurityAuditQueries,
+		cacheGet:  p.cache.GetSecurityAuditQuery,
+		cacheList: p.cache.GetSecurityAuditQueries,
+		update: func(ctx context.Context, item *secreports.AuditQuery) error {
+			err := p.secReports.UpsertSecurityAuditQuery(ctx, item)
+			return trace.Wrap(err)
+		},
+		deleteAll: p.secReports.DeleteAllSecurityAuditQueries,
+	})
+}
+
+// TestSecurityReportState tests that CRUD operations on security report state resources are
+// replicated from the backend to the cache.
+func TestSecurityReports(t *testing.T) {
+	t.Parallel()
+
+	p := newTestPack(t, ForAuth)
+	t.Cleanup(p.Close)
+
+	testResources(t, p, testFuncs[*secreports.Report]{
+		newResource: func(name string) (*secreports.Report, error) {
+			return newSecurityReport(t, name), nil
+		},
+		create: func(ctx context.Context, item *secreports.Report) error {
+			err := p.secReports.UpsertSecurityReport(ctx, item)
+			return trace.Wrap(err)
+		},
+		list:      p.secReports.GetSecurityReports,
+		cacheGet:  p.cache.GetSecurityReport,
+		cacheList: p.cache.GetSecurityReports,
+		update: func(ctx context.Context, item *secreports.Report) error {
+			err := p.secReports.UpsertSecurityReport(ctx, item)
+			return trace.Wrap(err)
+		},
+		deleteAll: p.secReports.DeleteAllSecurityReports,
+	})
+}
+
+// TestSecurityReportState tests that CRUD operations on security report state resources are
+// replicated from the backend to the cache.
+func TestSecurityReportState(t *testing.T) {
+	t.Parallel()
+
+	p := newTestPack(t, ForAuth)
+	t.Cleanup(p.Close)
+
+	testResources(t, p, testFuncs[*secreports.ReportState]{
+		newResource: func(name string) (*secreports.ReportState, error) {
+			return newSecurityReportState(t, name), nil
+		},
+		create: func(ctx context.Context, item *secreports.ReportState) error {
+			err := p.secReports.UpsertSecurityReportsState(ctx, item)
+			return trace.Wrap(err)
+		},
+		list:      p.secReports.GetSecurityReportsStates,
+		cacheGet:  p.cache.GetSecurityReportState,
+		cacheList: p.cache.GetSecurityReportsStates,
+		update: func(ctx context.Context, item *secreports.ReportState) error {
+			err := p.secReports.UpsertSecurityReportsState(ctx, item)
+			return trace.Wrap(err)
+		},
+		deleteAll: p.secReports.DeleteAllSecurityReportsStates,
+	})
+}
+
 // TestUserLoginStates tests that CRUD operations on user login state resources are
 // replicated from the backend to the cache.
 func TestUserLoginStates(t *testing.T) {
@@ -2645,6 +2739,9 @@ func TestCacheWatchKindExistsInEvents(t *testing.T) {
 		types.KindAccessList:              newAccessList(t, "access-list"),
 		types.KindUserLoginState:          newUserLoginState(t, "user-login-state"),
 		types.KindAccessListMember:        newAccessListMember(t, "access-list", "member"),
+		types.KindAuditQuery:              newAuditQuery(t, "audit-query"),
+		types.KindSecurityReport:          newSecurityReport(t, "security-report"),
+		types.KindSecurityReportState:     newSecurityReport(t, "security-report-state"),
 	}
 
 	for name, cfg := range cases {
@@ -2893,6 +2990,62 @@ func newAccessList(t *testing.T, name string) *accesslist.AccessList {
 	)
 	require.NoError(t, err)
 	return accessList
+}
+func newAuditQuery(t *testing.T, name string) *secreports.AuditQuery {
+	t.Helper()
+
+	item, err := secreports.NewAuditQuery(
+		header.Metadata{
+			Name: name,
+		},
+		secreports.AuditQuerySpec{
+			Name:        name,
+			Title:       "title",
+			Description: "desc",
+			Query:       "query",
+		},
+	)
+	require.NoError(t, err)
+	return item
+}
+
+func newSecurityReport(t *testing.T, name string) *secreports.Report {
+	t.Helper()
+	item, err := secreports.NewReport(
+		header.Metadata{
+			Name: name,
+		},
+		secreports.ReportSpec{
+			Name:  name,
+			Title: "title",
+			AuditQueries: []*secreports.AuditQuerySpec{
+				{
+					Name:        "name",
+					Title:       "title",
+					Description: "desc",
+					Query:       "query",
+				},
+			},
+			Version: "0.0.0",
+		},
+	)
+	require.NoError(t, err)
+	return item
+}
+
+func newSecurityReportState(t *testing.T, name string) *secreports.ReportState {
+	t.Helper()
+	item, err := secreports.NewReportState(
+		header.Metadata{
+			Name: name,
+		},
+		secreports.ReportStateSpec{
+			Status:    "RUNNING",
+			UpdatedAt: time.Now().UTC(),
+		},
+	)
+	require.NoError(t, err)
+	return item
 }
 
 func newUserLoginState(t *testing.T, name string) *userloginstate.UserLoginState {

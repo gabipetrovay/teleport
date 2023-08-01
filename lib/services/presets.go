@@ -162,6 +162,8 @@ func NewPresetEditorRole() types.Role {
 					types.NewRule(types.KindClusterAlert, RW()),
 					types.NewRule(types.KindAccessList, RW()),
 					types.NewRule(types.KindNode, RW()),
+					types.NewRule(types.KindSecurityReport, append(RW(), types.VerbUse)),
+					types.NewRule(types.KindAuditQuery, append(RW(), types.VerbUse)),
 					// Please see defaultAllowRules when adding a new rule.
 				},
 			},
@@ -267,6 +269,8 @@ func NewPresetAuditorRole() types.Role {
 					types.NewRule(types.KindSessionTracker, RO()),
 					types.NewRule(types.KindClusterAlert, RO()),
 					types.NewRule(types.KindInstance, RO()),
+					types.NewRule(types.KindSecurityReport, append(RO(), types.VerbUse)),
+					types.NewRule(types.KindAuditQuery, append(RO(), types.VerbUse)),
 					// Please see defaultAllowRules when adding a new rule.
 				},
 			},
@@ -504,6 +508,8 @@ func defaultAllowRules() map[string][]types.Rule {
 		teleport.PresetAuditorRoleName: {
 			types.NewRule(types.KindSessionTracker, RO()),
 			types.NewRule(types.KindInstance, RO()),
+			types.NewRule(types.KindSecurityReport, append(RO(), types.VerbUse)),
+			types.NewRule(types.KindAuditQuery, append(RO(), types.VerbUse)),
 		},
 		teleport.PresetEditorRoleName: {
 			types.NewRule(types.KindConnectionDiagnostic, RW()),
@@ -521,6 +527,8 @@ func defaultAllowRules() map[string][]types.Rule {
 			types.NewRule(types.KindInstance, RO()),
 			types.NewRule(types.KindAssistant, append(RW(), types.VerbUse)),
 			types.NewRule(types.KindNode, RW()),
+			types.NewRule(types.KindSecurityReport, RW()),
+			types.NewRule(types.KindAuditQuery, RW()),
 		},
 		teleport.PresetAccessRoleName: {
 			types.NewRule(types.KindInstance, RO()),

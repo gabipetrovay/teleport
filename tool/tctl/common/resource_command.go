@@ -42,6 +42,7 @@ import (
 	loginrulepb "github.com/gravitational/teleport/api/gen/proto/go/teleport/loginrule/v1"
 	"github.com/gravitational/teleport/api/types"
 	"github.com/gravitational/teleport/api/types/installers"
+	"github.com/gravitational/teleport/api/types/secreports"
 	"github.com/gravitational/teleport/lib/auth"
 	"github.com/gravitational/teleport/lib/client"
 	"github.com/gravitational/teleport/lib/defaults"
@@ -130,6 +131,8 @@ func (rc *ResourceCommand) Initialize(app *kingpin.Application, config *servicec
 		types.KindIntegration:              rc.createIntegration,
 		types.KindWindowsDesktop:           rc.createWindowsDesktop,
 		types.KindAccessList:               rc.createAccessList,
+		types.KindAuditQuery:               rc.createAuditQuery,
+		types.KindSecurityReport:           rc.createSecurityReport,
 	}
 	rc.config = config
 
@@ -1308,6 +1311,17 @@ func (rc *ResourceCommand) Delete(ctx context.Context, client auth.ClientI) (err
 			return trace.Wrap(err)
 		}
 		fmt.Printf("Access list %q has been deleted\n", rc.ref.Name)
+	case types.KindAuditQuery:
+		if err := client.SecReportsClient().DeleteSecurityAuditQuery(ctx, rc.ref.Name); err != nil {
+			return trace.Wrap(err)
+		}
+		fmt.Printf("Audit Query %q has been deleted\n", rc.ref.Name)
+	case types.KindSecurityReport:
+		if err := client.SecReportsClient().DeleteSecurityReport(ctx, rc.ref.Name); err != nil {
+			return trace.Wrap(err)
+		}
+		fmt.Printf("Security Report %q has been deleted\n", rc.ref.Name)
+
 	default:
 		return trace.BadParameter("deleting resources of type %q is not supported", rc.ref.Kind)
 	}
@@ -2048,8 +2062,36 @@ func (rc *ResourceCommand) getCollection(ctx context.Context, client auth.Client
 				break
 			}
 		}
-
 		return &integrationCollection{integrations: resources}, nil
+	case types.KindAuditQuery:
+		if rc.ref.Name != "" {
+			auditQuery, err := client.SecReportsClient().GetSecurityAuditQuery(ctx, rc.ref.Name)
+			if err != nil {
+				return nil, trace.Wrap(err)
+			}
+			return &auditQueryCollection{auditQueries: []*secreports.AuditQuery{auditQuery}}, nil
+		}
+
+		resources, err := client.SecReportsClient().GetSecurityAuditQueries(ctx)
+		if err != nil {
+			return nil, trace.Wrap(err)
+		}
+
+		return &auditQueryCollection{auditQueries: resources}, nil
+	case types.KindSecurityReport:
+		if rc.ref.Name != "" {
+
+			resource, err := client.SecReportsClient().GetSecurityReport(ctx, rc.ref.Name)
+			if err != nil {
+				return nil, trace.Wrap(err)
+			}
+			return &securityReportCollection{items: []*secreports.Report{resource}}, nil
+		}
+		resources, err := client.SecReportsClient().GetSecurityReports(ctx)
+		if err != nil {
+			return nil, trace.Wrap(err)
+		}
+		return &securityReportCollection{items: resources}, nil
 	}
 	return nil, trace.BadParameter("getting %q is not supported", rc.ref.String())
 }
@@ -2250,4 +2292,40 @@ func formatAmbiguousDeleteMessage(ref services.Ref, resDesc string, names []stri
 Use either a full resource name or an unambiguous prefix, for example:
 $ tctl rm %s`,
 		ref.String(), resDesc, strings.Join(names, "\n"), exampleRef.String())
+}
+
+func (rc *ResourceCommand) createAuditQuery(ctx context.Context, client auth.ClientI, raw services.UnknownResource) error {
+	in, err := services.UnmarshalAuditQuery(raw.Raw)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
+	if err := in.CheckAndSetDefaults(); err != nil {
+		return trace.Wrap(err)
+	}
+
+	if err = client.SecReportsClient().UpsertSecurityAuditQuery(ctx, in); err != nil {
+		if err != nil {
+			return trace.Wrap(err)
+		}
+	}
+	return nil
+}
+
+func (rc *ResourceCommand) createSecurityReport(ctx context.Context, client auth.ClientI, raw services.UnknownResource) error {
+	in, err := services.UnmarshalSecurityReport(raw.Raw)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
+	if err := in.CheckAndSetDefaults(); err != nil {
+		return trace.Wrap(err)
+	}
+
+	if err = client.SecReportsClient().UpsertSecurityReport(ctx, in); err != nil {
+		if err != nil {
+			return trace.Wrap(err)
+		}
+	}
+	return nil
 }
