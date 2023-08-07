@@ -44,6 +44,7 @@ import (
 	"github.com/gravitational/teleport/api/types"
 	"github.com/gravitational/teleport/api/utils/keys"
 	"github.com/gravitational/teleport/lib/auth"
+	"github.com/gravitational/teleport/lib/auth/mfa"
 	wanlib "github.com/gravitational/teleport/lib/auth/webauthn"
 	"github.com/gravitational/teleport/lib/client"
 	"github.com/gravitational/teleport/lib/defaults"
@@ -275,7 +276,7 @@ func desktopTLSConfig(ctx context.Context, ws *websocket.Conn, pc *client.ProxyC
 			WindowsDesktopCerts: make(map[string][]byte),
 		},
 	}, func(ctx context.Context, proxyAddr string, c *proto.MFAAuthenticateChallenge) (*proto.MFAAuthenticateResponse, error) {
-		challenge := &client.MFAAuthenticateChallenge{
+		challenge := &mfa.MFAAuthenticateChallenge{
 			WebauthnChallenge: wanlib.CredentialAssertionFromProto(c.WebauthnChallenge),
 		}
 

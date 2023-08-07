@@ -34,6 +34,7 @@ import (
 	"github.com/gravitational/teleport/api/types"
 	"github.com/gravitational/teleport/api/utils/keys"
 	"github.com/gravitational/teleport/lib/auth"
+	"github.com/gravitational/teleport/lib/auth/mfa"
 	wanlib "github.com/gravitational/teleport/lib/auth/webauthn"
 	"github.com/gravitational/teleport/lib/client"
 	"github.com/gravitational/teleport/lib/defaults"
@@ -63,7 +64,7 @@ func TestWebauthnLogin_ssh(t *testing.T) {
 		Pass: password,
 	})
 	require.NoError(t, err)
-	authChallenge := &client.MFAAuthenticateChallenge{}
+	authChallenge := &mfa.MFAAuthenticateChallenge{}
 	require.NoError(t, json.Unmarshal(beginResp.Bytes(), authChallenge))
 	require.NotNil(t, authChallenge.WebauthnChallenge)
 
@@ -118,7 +119,7 @@ func TestWebauthnLogin_web(t *testing.T) {
 		Pass: password,
 	})
 	require.NoError(t, err)
-	authChallenge := &client.MFAAuthenticateChallenge{}
+	authChallenge := &mfa.MFAAuthenticateChallenge{}
 	require.NoError(t, json.Unmarshal(beginResp.Bytes(), authChallenge))
 	require.NotNil(t, authChallenge.WebauthnChallenge)
 
@@ -181,7 +182,7 @@ func TestWebauthnLogin_webWithPrivateKeyEnabledError(t *testing.T) {
 		Pass: password,
 	})
 	require.NoError(t, err)
-	authChallenge := &client.MFAAuthenticateChallenge{}
+	authChallenge := &mfa.MFAAuthenticateChallenge{}
 	require.NoError(t, json.Unmarshal(beginResp.Bytes(), authChallenge))
 	require.NotNil(t, authChallenge.WebauthnChallenge)
 
@@ -279,7 +280,7 @@ func TestAuthenticate_passwordless(t *testing.T) {
 				Passwordless: true, // no username and password
 			})
 			require.NoError(t, err, "Failed to create passwordless challenge")
-			mfaChallenge := &client.MFAAuthenticateChallenge{}
+			mfaChallenge := &mfa.MFAAuthenticateChallenge{}
 			require.NoError(t, json.Unmarshal(beginResp.Bytes(), mfaChallenge))
 			require.NotNil(t, mfaChallenge.WebauthnChallenge, "Want non-nil WebAuthn challenge")
 

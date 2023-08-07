@@ -31,6 +31,7 @@ import (
 
 	"github.com/gravitational/teleport/api/client/proto"
 	"github.com/gravitational/teleport/api/types"
+	"github.com/gravitational/teleport/lib/auth/mfa"
 	wanlib "github.com/gravitational/teleport/lib/auth/webauthn"
 	wancli "github.com/gravitational/teleport/lib/auth/webauthncli"
 	"github.com/gravitational/teleport/lib/client"
@@ -134,9 +135,9 @@ func TestSSHAgentPasswordlessLogin(t *testing.T) {
 	cfg.InsecureSkipVerify = true
 
 	// Reset functions after tests.
-	oldWebauthn := *client.PromptWebauthn
+	oldWebauthn := *mfa.PromptWebauthn
 	t.Cleanup(func() {
-		*client.PromptWebauthn = oldWebauthn
+		*mfa.PromptWebauthn = oldWebauthn
 	})
 
 	solvePwdless := func(ctx context.Context, origin string, assertion *wanlib.CredentialAssertion, prompt wancli.LoginPrompt) (*proto.MFAAuthenticateResponse, error) {
@@ -227,7 +228,7 @@ func TestSSHAgentPasswordlessLogin(t *testing.T) {
 			CustomPrompt:            test.customPromptLogin,
 		}
 
-		*client.PromptWebauthn = test.customPromptWebauthn
+		*mfa.PromptWebauthn = test.customPromptWebauthn
 		_, err = client.SSHAgentPasswordlessLogin(ctx, req)
 		require.NoError(t, err)
 		require.True(t, customPromptCalled, "Custom prompt present but not called")

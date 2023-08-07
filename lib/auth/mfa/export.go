@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package client
+package mfa
 
-var PromptMFAStandalone = &promptMFAStandalone
+var PromptWebauthn = &promptWebauthn
+var HasPlatformSupport = &hasPlatformSupport

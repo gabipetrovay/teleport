@@ -40,6 +40,7 @@ import (
 	devicepb "github.com/gravitational/teleport/api/gen/proto/go/teleport/devicetrust/v1"
 	"github.com/gravitational/teleport/api/types"
 	"github.com/gravitational/teleport/lib/auth"
+	"github.com/gravitational/teleport/lib/auth/mfa"
 	"github.com/gravitational/teleport/lib/auth/mocku2f"
 	wanlib "github.com/gravitational/teleport/lib/auth/webauthn"
 	wancli "github.com/gravitational/teleport/lib/auth/webauthncli"
@@ -81,17 +82,17 @@ func TestTeleportClient_Login_local(t *testing.T) {
 	cfg.InsecureSkipVerify = true
 
 	// Reset functions after tests.
-	oldStdin, oldWebauthn := prompt.Stdin(), *client.PromptWebauthn
-	oldHasPlatformSupport := *client.HasPlatformSupport
-	*client.HasPlatformSupport = func() bool {
+	oldStdin, oldWebauthn := prompt.Stdin(), *mfa.PromptWebauthn
+	oldHasPlatformSupport := *mfa.HasPlatformSupport
+	*mfa.HasPlatformSupport = func() bool {
 		return true
 	}
 	oldHasCredentials := *client.HasTouchIDCredentials
 
 	t.Cleanup(func() {
 		prompt.SetStdin(oldStdin)
-		*client.PromptWebauthn = oldWebauthn
-		*client.HasPlatformSupport = oldHasPlatformSupport
+		*mfa.PromptWebauthn = oldWebauthn
+		*mfa.HasPlatformSupport = oldHasPlatformSupport
 		*client.HasTouchIDCredentials = oldHasCredentials
 	})
 
@@ -263,7 +264,7 @@ func TestTeleportClient_Login_local(t *testing.T) {
 			defer cancel()
 
 			prompt.SetStdin(test.inputReader)
-			*client.PromptWebauthn = func(
+			*mfa.PromptWebauthn = func(
 				ctx context.Context,
 				origin string, assertion *wanlib.CredentialAssertion, prompt wancli.LoginPrompt, _ *wancli.LoginOpts,
 			) (*proto.MFAAuthenticateResponse, string, error) {
@@ -332,7 +333,7 @@ func TestTeleportClient_PromptMFAChallenge(t *testing.T) {
 	// challenge contents not relevant for test
 	challenge := &proto.MFAAuthenticateChallenge{}
 
-	customizedOpts := &client.PromptMFAChallengeOpts{
+	customizedOpts := &mfa.PromptMFAChallengeOpts{
 		HintBeforePrompt:        "some hint explaining the imminent prompt",
 		PromptDevicePrefix:      "llama",
 		Quiet:                   true,
@@ -346,15 +347,15 @@ func TestTeleportClient_PromptMFAChallenge(t *testing.T) {
 		name      string
 		tc        *client.TeleportClient
 		proxyAddr string
-		applyOpts func(*client.PromptMFAChallengeOpts)
+		applyOpts func(*mfa.PromptMFAChallengeOpts)
 		wantProxy string
-		wantOpts  *client.PromptMFAChallengeOpts
+		wantOpts  *mfa.PromptMFAChallengeOpts
 	}{
 		{
 			name:      "default TeleportClient",
 			tc:        defaultClient,
 			wantProxy: defaultClient.WebProxyAddr,
-			wantOpts: &client.PromptMFAChallengeOpts{
+			wantOpts: &mfa.PromptMFAChallengeOpts{
 				AuthenticatorAttachment: defaultClient.AuthenticatorAttachment,
 				PreferOTP:               defaultClient.PreferOTP,
 			},
@@ -363,7 +364,7 @@ func TestTeleportClient_PromptMFAChallenge(t *testing.T) {
 			name:      "opinionated TeleportClient",
 			tc:        opinionatedClient,
 			wantProxy: opinionatedClient.WebProxyAddr,
-			wantOpts: &client.PromptMFAChallengeOpts{
+			wantOpts: &mfa.PromptMFAChallengeOpts{
 				AuthenticatorAttachment: opinionatedClient.AuthenticatorAttachment,
 				PreferOTP:               opinionatedClient.PreferOTP,
 			},
@@ -372,7 +373,7 @@ func TestTeleportClient_PromptMFAChallenge(t *testing.T) {
 			name:      "custom proxyAddr and options",
 			tc:        defaultClient,
 			proxyAddr: proxy2,
-			applyOpts: func(opts *client.PromptMFAChallengeOpts) {
+			applyOpts: func(opts *mfa.PromptMFAChallengeOpts) {
 				*opts = *customizedOpts
 			},
 			wantProxy: proxy2,
@@ -384,7 +385,7 @@ func TestTeleportClient_PromptMFAChallenge(t *testing.T) {
 			promptCalled := false
 			*client.PromptMFAStandalone = func(
 				gotCtx context.Context, gotChallenge *proto.MFAAuthenticateChallenge, gotProxy string,
-				gotOpts *client.PromptMFAChallengeOpts,
+				gotOpts *mfa.PromptMFAChallengeOpts,
 			) (*proto.MFAAuthenticateResponse, error) {
 				promptCalled = true
 				assert.Equal(t, challenge, gotChallenge, "challenge mismatch")
