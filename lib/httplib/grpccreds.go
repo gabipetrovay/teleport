@@ -19,6 +19,7 @@ package httplib
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"net"
 	"syscall"
 
@@ -54,7 +55,60 @@ func (c *TLSCreds) ServerHandshake(rawConn net.Conn) (net.Conn, credentials.Auth
 	if !ok {
 		return nil, nil, trace.BadParameter("expected TLS connection")
 	}
+
+	if err := verifyPeerCertificateOnResume(tlsConn, c.Config); err != nil {
+		return nil, nil, trace.Wrap(err)
+	}
+
 	return WrapSyscallConn(rawConn, tlsConn), credentials.TLSInfo{State: tlsConn.ConnectionState()}, nil
+}
+
+func verifyPeerCertificateOnResume(tlsConn *tls.Conn, tlsConfig *tls.Config) error {
+	// Skip verify.
+	if tlsConfig.InsecureSkipVerify {
+		return nil
+	}
+
+	// Skip if not resuming.
+	cs := tlsConn.ConnectionState()
+	if !cs.DidResume {
+		return nil
+	}
+
+	if tlsConfig.GetConfigForClient != nil {
+		tlsConfigForClient, err := tlsConfig.GetConfigForClient(&tls.ClientHelloInfo{
+			CipherSuites:      []uint16{cs.CipherSuite},
+			ServerName:        cs.ServerName,
+			SupportedProtos:   []string{cs.NegotiatedProtocol},
+			SupportedVersions: []uint16{cs.Version},
+			Conn:              tlsConn,
+		})
+		if err != nil {
+			return trace.Wrap(err)
+		}
+		tlsConfig = tlsConfigForClient
+	}
+
+	// Skip if client cert verification is not required.
+	if tlsConfig.ClientAuth < tls.VerifyClientCertIfGiven || len(cs.PeerCertificates) == 0 {
+		return nil
+	}
+
+	opts := x509.VerifyOptions{
+		Roots:         tlsConfig.ClientCAs,
+		Intermediates: x509.NewCertPool(),
+		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	}
+	for _, cert := range cs.PeerCertificates[1:] {
+		opts.Intermediates.AddCert(cert)
+	}
+	if _, err := cs.PeerCertificates[0].Verify(opts); err != nil {
+		// TODO is it possible to send a TLS alert or anything instead of just EOF?
+		return trace.Wrap(err)
+	}
+
+	// TODO if tlsConfig.VerifyPeerCertifiate != nil
+	return nil
 }
 
 // Clone clones transport credentials
