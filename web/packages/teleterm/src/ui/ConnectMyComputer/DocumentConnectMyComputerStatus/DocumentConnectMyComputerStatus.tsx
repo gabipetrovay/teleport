@@ -87,6 +87,8 @@ export function DocumentConnectMyComputerStatus(
     );
   }
 
+  const showCompatibilityError = false;
+
   const isRunning =
     currentAction.kind === 'observe-process' &&
     currentAction.agentProcessState.status === 'running';
@@ -102,7 +104,8 @@ export function DocumentConnectMyComputerStatus(
 
   const showDisconnectButton = isRunning || isKilling;
   const disableDisconnectButton = isKilling;
-  const disableConnectButton = isDownloading || isStarting;
+  const disableConnectButton =
+    isDownloading || isStarting || showCompatibilityError;
 
   return (
     <Document visible={props.visible}>
@@ -184,6 +187,29 @@ export function DocumentConnectMyComputerStatus(
             {prettyCurrentAction.error}
           </Alert>
         )}
+
+        {showCompatibilityError && (
+          <Alert>
+            {/* TODO: What if we recommend a downgrade to a version which doesn't have Connect My Computer yet? */}
+            <Text>
+              Detected an incompatible agent version. The cluster is on version
+              14.3.7 while Teleport Connect is on version 15.0.1. Per our{' '}
+              <a
+                href="https://goteleport.com/docs/faq/#version-compatibility"
+                target="_blank"
+              >
+                compatibility promise
+              </a>
+              , clusters don't support clients that are on a newer major
+              version. If you wish to connect your computer, upgrade the cluster
+              to version 15.
+              <ButtonPrimary mt={2} type="button">
+                Visit the downloads page
+              </ButtonPrimary>
+            </Text>
+          </Alert>
+        )}
+
         {prettyCurrentAction.logs && <Logs logs={prettyCurrentAction.logs} />}
         <Text mb={4} mt={1}>
           Connecting your computer will allow any cluster user with the role{' '}
