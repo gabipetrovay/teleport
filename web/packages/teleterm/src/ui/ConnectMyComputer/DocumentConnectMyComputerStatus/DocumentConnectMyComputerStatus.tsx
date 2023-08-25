@@ -195,6 +195,7 @@ export function DocumentConnectMyComputerStatus(
             block
             disabled={disableDisconnectButton}
             onClick={killAgent}
+            size="large"
           >
             Disconnect
           </ButtonPrimary>
@@ -203,6 +204,7 @@ export function DocumentConnectMyComputerStatus(
             block
             disabled={disableConnectButton}
             onClick={downloadAndStartAgent}
+            size="large"
           >
             Connect
           </ButtonPrimary>
