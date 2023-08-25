@@ -20,11 +20,9 @@ import (
 	"context"
 	"crypto/tls"
 	"net"
-	"net/http"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	awsdynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/stretchr/testify/require"
 
@@ -33,25 +31,7 @@ import (
 	libevents "github.com/gravitational/teleport/lib/events"
 	"github.com/gravitational/teleport/lib/srv/db/common"
 	"github.com/gravitational/teleport/lib/srv/db/dynamodb"
-	awsutils "github.com/gravitational/teleport/lib/utils/aws"
 )
-
-func registerTestDynamoDBEngine() {
-	// Override DynamoDB engine that is used normally with the test one
-	// with custom HTTP client.
-	common.RegisterEngine(newTestDynamoDBEngine, defaults.ProtocolDynamoDB)
-}
-
-func newTestDynamoDBEngine(ec common.EngineConfig) common.Engine {
-	return &dynamodb.Engine{
-		EngineConfig:  ec,
-		RoundTrippers: make(map[string]http.RoundTripper),
-		// inject mock AWS credentials.
-		CredentialsGetter: awsutils.NewStaticCredentialsGetter(
-			credentials.NewStaticCredentials("AKIDl", "SECRET", "SESSION"),
-		),
-	}
-}
 
 func TestAccessDynamoDB(t *testing.T) {
 	t.Parallel()

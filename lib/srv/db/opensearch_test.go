@@ -21,7 +21,6 @@ import (
 	"net"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/stretchr/testify/require"
 
 	"github.com/gravitational/teleport/api/types"
@@ -30,22 +29,7 @@ import (
 	libevents "github.com/gravitational/teleport/lib/events"
 	"github.com/gravitational/teleport/lib/srv/db/common"
 	"github.com/gravitational/teleport/lib/srv/db/opensearch"
-	awsutils "github.com/gravitational/teleport/lib/utils/aws"
 )
-
-func registerTestOpenSearchEngine() {
-	common.RegisterEngine(newTestOpenSearchEngine, defaults.ProtocolOpenSearch)
-}
-
-func newTestOpenSearchEngine(ec common.EngineConfig) common.Engine {
-	return &opensearch.Engine{
-		EngineConfig: ec,
-		// inject mock AWS credentials.
-		CredentialsGetter: awsutils.NewStaticCredentialsGetter(
-			credentials.NewStaticCredentials("AKIDl", "SECRET", "SESSION"),
-		),
-	}
-}
 
 func TestAccessOpenSearch(t *testing.T) {
 	ctx := context.Background()

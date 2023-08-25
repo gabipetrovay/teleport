@@ -58,6 +58,7 @@ import (
 	"github.com/gravitational/teleport/lib/srv/db/snowflake"
 	"github.com/gravitational/teleport/lib/srv/db/sqlserver"
 	"github.com/gravitational/teleport/lib/utils"
+	awsutils "github.com/gravitational/teleport/lib/utils/aws"
 )
 
 func init() {
@@ -141,6 +142,10 @@ type Config struct {
 	// discoveryResourceChecker performs some pre-checks when creating databases
 	// discovered by the discovery service.
 	discoveryResourceChecker cloud.DiscoveryResourceChecker
+
+	// awsCredentialsGetter is used to create AWS sessions for AWS signing
+	// service.
+	awsCredentialsGetter awsutils.CredentialsGetter
 }
 
 // NewAuditFn defines a function that creates an audit logger.
@@ -256,6 +261,16 @@ func (c *Config) CheckAndSetDefaults(ctx context.Context) (err error) {
 
 	if c.ShutdownPollPeriod == 0 {
 		c.ShutdownPollPeriod = defaults.ShutdownPollPeriod
+	}
+
+	if c.awsCredentialsGetter == nil {
+		// Cache AWS sessions for a minute.
+		c.awsCredentialsGetter, err = awsutils.NewCachedCredentialsGetter(awsutils.CachedCredentialsGetterConfig{
+			Clock: c.Clock,
+		})
+		if err != nil {
+			return trace.Wrap(err)
+		}
 	}
 
 	return nil
@@ -1084,6 +1099,7 @@ func (s *Server) createEngine(sessionCtx *common.Session, audit common.Audit) (c
 				Clock:      s.cfg.Clock,
 			}
 		},
+		AWSCredentialsGetter: s.cfg.awsCredentialsGetter,
 	})
 }
 

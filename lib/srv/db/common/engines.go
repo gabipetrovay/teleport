@@ -29,6 +29,7 @@ import (
 	"github.com/gravitational/teleport/lib/auth"
 	"github.com/gravitational/teleport/lib/cloud"
 	"github.com/gravitational/teleport/lib/srv/db/common/enterprise"
+	awsutils "github.com/gravitational/teleport/lib/utils/aws"
 )
 
 var (
@@ -115,6 +116,9 @@ type EngineConfig struct {
 	DataDir string
 	// GetUserProvisioner is automatic database users creation handler.
 	GetUserProvisioner func(AutoUsers) *UserProvisioner
+	// AWSCredentialsGetter is used to create AWS sessions for AWS signing
+	// service.
+	AWSCredentialsGetter awsutils.CredentialsGetter
 }
 
 // CheckAndSetDefaults validates the config and sets default values.
@@ -139,6 +143,9 @@ func (c *EngineConfig) CheckAndSetDefaults() error {
 	}
 	if c.Log == nil {
 		c.Log = logrus.StandardLogger()
+	}
+	if c.AWSCredentialsGetter == nil {
+		c.AWSCredentialsGetter = awsutils.NewCredentialsGetter()
 	}
 	return nil
 }

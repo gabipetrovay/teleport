@@ -68,8 +68,6 @@ type Engine struct {
 	// RoundTrippers is a cache of RoundTrippers, mapped by service endpoint.
 	// It is not guarded by a mutex, since requests are processed serially.
 	RoundTrippers map[string]http.RoundTripper
-	// CredentialsGetter is used to obtain STS credentials.
-	CredentialsGetter libaws.CredentialsGetter
 }
 
 var _ common.Engine = (*Engine)(nil)
@@ -144,7 +142,7 @@ func (e *Engine) HandleConnection(ctx context.Context, _ *common.Session) error 
 	signer, err := libaws.NewSigningService(libaws.SigningServiceConfig{
 		Clock:             e.Clock,
 		Session:           awsSession,
-		CredentialsGetter: e.CredentialsGetter,
+		CredentialsGetter: e.AWSCredentialsGetter,
 	})
 	if err != nil {
 		return trace.Wrap(err)

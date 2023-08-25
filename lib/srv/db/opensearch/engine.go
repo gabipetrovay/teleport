@@ -56,8 +56,6 @@ type Engine struct {
 	clientConn net.Conn
 	// sessionCtx is current session context.
 	sessionCtx *common.Session
-	// CredentialsGetter is used to obtain STS credentials.
-	CredentialsGetter libaws.CredentialsGetter
 }
 
 // InitializeConnection initializes the engine with the client connection.
@@ -141,7 +139,7 @@ func (e *Engine) HandleConnection(ctx context.Context, _ *common.Session) error 
 	signer, err := libaws.NewSigningService(libaws.SigningServiceConfig{
 		Clock:             e.Clock,
 		Session:           awsSession,
-		CredentialsGetter: e.CredentialsGetter,
+		CredentialsGetter: e.AWSCredentialsGetter,
 	})
 	if err != nil {
 		return trace.Wrap(err)

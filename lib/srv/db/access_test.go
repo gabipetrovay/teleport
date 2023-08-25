@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/ClickHouse/ch-go"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	cqlclient "github.com/datastax/go-cassandra-native-protocol/client"
 	elastic "github.com/elastic/go-elasticsearch/v8"
 	mysqlclient "github.com/go-mysql-org/go-mysql/client"
@@ -85,6 +86,7 @@ import (
 	"github.com/gravitational/teleport/lib/srv/db/sqlserver"
 	"github.com/gravitational/teleport/lib/tlsca"
 	"github.com/gravitational/teleport/lib/utils"
+	awsutils "github.com/gravitational/teleport/lib/utils/aws"
 	"github.com/gravitational/teleport/lib/utils/cert"
 )
 
@@ -93,9 +95,7 @@ func TestMain(m *testing.M) {
 	native.PrecomputeTestKeys(m)
 	registerTestSnowflakeEngine()
 	registerTestElasticsearchEngine()
-	registerTestOpenSearchEngine()
 	registerTestSQLServerEngine()
-	registerTestDynamoDBEngine()
 	os.Exit(m.Run())
 }
 
@@ -2335,6 +2335,10 @@ func (c *testContext) setupDatabaseServer(ctx context.Context, t testing.TB, p a
 		AzureMatchers:            p.AzureMatchers,
 		ShutdownPollPeriod:       100 * time.Millisecond,
 		discoveryResourceChecker: p.DiscoveryResourceChecker,
+		// inject mock AWS credentials.
+		awsCredentialsGetter: awsutils.NewStaticCredentialsGetter(
+			credentials.NewStaticCredentials("AKIDl", "SECRET", "SESSION"),
+		),
 	})
 	require.NoError(t, err)
 
