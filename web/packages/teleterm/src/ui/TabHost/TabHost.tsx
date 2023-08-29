@@ -29,18 +29,26 @@ import { useTabShortcuts } from './useTabShortcuts';
 import { useNewTabOpener } from './useNewTabOpener';
 import { ClusterConnectPanel } from './ClusterConnectPanel/ClusterConnectPanel';
 
-export function TabHostContainer() {
+export function TabHostContainer(props: {
+  portalRef: React.MutableRefObject<any>;
+}) {
   const ctx = useAppContext();
   ctx.workspacesService.useState();
   const isRootClusterSelected = !!ctx.workspacesService.getRootClusterUri();
 
   if (isRootClusterSelected) {
-    return <TabHost ctx={ctx} />;
+    return <TabHost ctx={ctx} portalRef={props.portalRef} />;
   }
   return <ClusterConnectPanel />;
 }
 
-export function TabHost({ ctx }: { ctx: IAppContext }) {
+export function TabHost({
+  ctx,
+  portalRef,
+}: {
+  ctx: IAppContext;
+  portalRef: React.MutableRefObject<any>;
+}) {
   const documentsService =
     ctx.workspacesService.getActiveWorkspaceDocumentService();
   const activeDocument = documentsService?.getActive();
@@ -111,7 +119,7 @@ export function TabHost({ ctx }: { ctx: IAppContext }) {
           closeTabTooltip={getLabelWithAccelerator('Close', 'closeTab')}
         />
       </Flex>
-      <DocumentsRenderer />
+      <DocumentsRenderer portalRef={portalRef} />
     </StyledTabHost>
   );
 }

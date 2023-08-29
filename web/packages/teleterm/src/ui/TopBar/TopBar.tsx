@@ -25,11 +25,12 @@ import { Clusters } from './Clusters';
 import { Identity } from './Identity';
 import { AdditionalActions } from './AdditionalActions';
 
-export function TopBar() {
+export function TopBar(props: { portalRef: React.MutableRefObject<any> }) {
   return (
     <Grid>
       <JustifyLeft>
         <Connections />
+        <div ref={props.portalRef} />
       </JustifyLeft>
       <CentralContainer>
         <Clusters />

@@ -154,6 +154,7 @@ function getTestSetup({ documents }: { documents: Document[] }) {
 
   const utils = render(
     <MockAppContextProvider appContext={appContext}>
+      {/* @ts-ignore */}
       <TabHost ctx={appContext} />
     </MockAppContextProvider>
   );
