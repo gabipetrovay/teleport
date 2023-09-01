@@ -429,11 +429,6 @@
               "forScopes": ["enterprise", "cloud"]
             },
             {
-              "title": "Opsgenie",
-              "slug": "/access-controls/access-request-plugins/opsgenie/",
-              "forScopes": ["cloud"]
-            },
-            {
               "title": "Jira",
               "slug": "/access-controls/access-request-plugins/ssh-approval-jira/",
               "forScopes": ["enterprise", "cloud"]
@@ -2741,6 +2736,11 @@
     {
       "source": "/management/guides/terraform-provider/",
       "destination": "/management/dynamic-resources/terraform-provider/",
+      "permanent": true
+    },
+    {
+      "source": "/access-controls/access-request-plugins/opsgenie/",
+      "destination": "/access-controls/access-request-plugins/",
       "permanent": true
     }
   ]
