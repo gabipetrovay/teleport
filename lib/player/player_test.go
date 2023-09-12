@@ -189,6 +189,45 @@ func TestSeekForward(t *testing.T) {
 	}
 }
 
+func TestRewind(t *testing.T) {
+	t.Skip("not implemented") // TODO(zmb3)
+
+	clk := clockwork.NewFakeClock()
+	p, err := player.New(&player.Config{
+		Clock:     clk,
+		SessionID: "test-session",
+		Streamer:  &simpleStreamer{count: 10, delay: 1000},
+	})
+	require.NoError(t, err)
+	require.NoError(t, p.Play())
+
+	// play through 7 events at regular speed
+	for i := 0; i < 7; i++ {
+		clk.BlockUntil(1)                    // player is now waiting to emit event
+		clk.Advance(1000 * time.Millisecond) // unblock event
+		<-p.C()                              // read event
+	}
+
+	// now "rewind" to the point just prior to event index 3 (4000 ms into session)
+	clk.BlockUntil(1)
+	p.SetPos(3900 * time.Millisecond)
+
+	// when we advance the clock, we expect the following behavior:
+	// - event index 7 (which we were blocked on) comes out right away
+	// - playback restarts, events 0 through 2 are emitted immediately
+	// - event index 3 is emitted after another 100ms
+	clk.Advance(1000 * time.Millisecond)
+	require.Equal(t, int64(7), (<-p.C()).GetIndex())
+	require.Equal(t, int64(0), (<-p.C()).GetIndex())
+	require.Equal(t, int64(1), (<-p.C()).GetIndex())
+	require.Equal(t, int64(2), (<-p.C()).GetIndex())
+	clk.BlockUntil(1)
+	clk.Advance(100 * time.Millisecond)
+	require.Equal(t, int64(3), (<-p.C()).GetIndex())
+
+	p.Close()
+}
+
 // simpleStreamer streams a fake session that contains
 // count events, emitted at a particular interval
 type simpleStreamer struct {
