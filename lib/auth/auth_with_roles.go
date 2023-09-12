@@ -1627,112 +1627,94 @@ func (a *ServerWithRoles) ListUnifiedResources(ctx context.Context, req *proto.L
 	}()
 
 	startFetch := time.Now()
-	unifiedResources, err := a.authServer.UnifiedResourceCache.GetUnifiedResources(ctx)
-	if err != nil {
-		return nil, trace.Wrap(err)
-	}
-
-	elapsedFetch = time.Since(startFetch)
-
 	startFilter := time.Now()
-	for _, resource := range unifiedResources {
+	filter := services.MatchResourceFilter{
+		Labels:              req.Labels,
+		SearchKeywords:      req.SearchKeywords,
+		PredicateExpression: req.PredicateExpression,
+		Kinds:               req.Kinds,
+	}
+	unifiedResources, nextKey, err := a.authServer.UnifiedResourceCache.IterateUnifiedResources(ctx, func(resource types.ResourceWithLabels) (bool, error) {
 		switch r := resource.(type) {
 		case types.Server:
-			{
-				if err := a.checkAccessToNode(r); err != nil {
-					if trace.IsAccessDenied(err) {
-						continue
-					}
-
-					return nil, trace.Wrap(err)
+			if err := a.checkAccessToNode(r); err != nil {
+				if trace.IsAccessDenied(err) {
+					return false, nil
 				}
-
-				filteredResources = append(filteredResources, resource)
+				return false, trace.Wrap(err)
 			}
+			match, err := services.MatchResourceByFilters(r, filter, nil)
+			return match, err
 		case types.DatabaseServer:
 			{
 				if err := a.checkAccessToDatabase(r.GetDatabase()); err != nil {
 					if trace.IsAccessDenied(err) {
-						continue
+						return false, nil
 					}
-
-					return nil, trace.Wrap(err)
+					return false, trace.Wrap(err)
 				}
-
-				filteredResources = append(filteredResources, resource)
+				match, err := services.MatchResourceByFilters(r, filter, nil)
+				return match, err
 			}
-
 		case types.AppServer:
 			{
 				if err := a.checkAccessToApp(r.GetApp()); err != nil {
 					if trace.IsAccessDenied(err) {
-						continue
+						return false, nil
 					}
-
-					return nil, trace.Wrap(err)
+					return false, trace.Wrap(err)
 				}
-
-				filteredResources = append(filteredResources, resource)
+				match, err := services.MatchResourceByFilters(r, filter, nil)
+				return match, err
 			}
 		case types.SAMLIdPServiceProvider:
 			{
 				if err := a.action(apidefaults.Namespace, types.KindSAMLIdPServiceProvider, types.VerbList); err == nil {
-					filteredResources = append(filteredResources, resource)
+					match, err := services.MatchResourceByFilters(r, filter, nil /* seen map */)
+					return match, err
 				}
+				return false, nil
 			}
 		case types.KubeServer:
 			kube := r.GetCluster()
 			if err := a.checkAccessToKubeCluster(kube); err != nil {
 				if trace.IsAccessDenied(err) {
-					continue
+					return false, nil
 				}
-
-				return nil, trace.Wrap(err)
+				return false, trace.Wrap(err)
 			}
-
-			filteredResources = append(filteredResources, kube)
+			match, err := services.MatchResourceByFilters(r, filter, nil /* seen map */)
+			return match, err
 		case types.WindowsDesktop:
 			{
 				if err := a.checkAccessToWindowsDesktop(r); err != nil {
 					if trace.IsAccessDenied(err) {
-						continue
+						return false, nil
 					}
 
-					return nil, trace.Wrap(err)
+					return false, trace.Wrap(err)
 				}
-
-				filteredResources = append(filteredResources, resource)
+				match, err := services.MatchResourceByFilters(r, filter, nil /* seen map */)
+				return match, err
 			}
+		default:
+			return false, nil
 		}
+	}, req)
+	if err != nil {
+		return nil, trace.Wrap(err, "filtering unified resources")
 	}
+
+	elapsedFetch = time.Since(startFetch)
 	elapsedFilter = time.Since(startFilter)
 
-	if req.SortBy.Field != "" {
-		if err := filteredResources.SortByCustom(req.SortBy); err != nil {
-			return nil, trace.Wrap(err, "sorting unified resources")
-		}
-	}
-
-	// Apply request filters and get pagination info.
-	resp, err := local.FakePaginate(filteredResources, local.FakePaginateParams{
-		Limit:               req.Limit,
-		Labels:              req.Labels,
-		SearchKeywords:      req.SearchKeywords,
-		PredicateExpression: req.PredicateExpression,
-		StartKey:            req.StartKey,
-		Kinds:               req.Kinds,
-	})
-	if err != nil {
-		return nil, trace.Wrap(err)
-	}
-
-	paginatedResources, err := a.MakePaginatedResources(types.KindUnifiedResource, resp.Resources)
+	paginatedResources, err := a.MakePaginatedResources(types.KindUnifiedResource, unifiedResources)
 	if err != nil {
 		return nil, trace.Wrap(err, "making paginated unified resources")
 	}
 
 	return &proto.ListUnifiedResourcesResponse{
-		NextKey:   resp.NextKey,
+		NextKey:   nextKey,
 		Resources: paginatedResources,
 	}, nil
 }

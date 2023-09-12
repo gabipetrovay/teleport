@@ -26,6 +26,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/gravitational/teleport"
+	"github.com/gravitational/teleport/api/client/proto"
 	apidefaults "github.com/gravitational/teleport/api/defaults"
 	"github.com/gravitational/teleport/api/types"
 	"github.com/gravitational/teleport/api/types/accesslist"
@@ -51,8 +52,13 @@ type UnifiedResourceCache struct {
 	mu  sync.Mutex
 	log *log.Entry
 	cfg UnifiedResourceCacheConfig
-	// tree is a BTree with items
-	tree            *btree.BTreeG[*item]
+	// nameTree is a BTree with items sorted by (hostname)/name/type
+	nameTree *btree.BTreeG[*item]
+	// typeTree is a BTree with items sorted by type/(hostname)/name
+	typeTree *btree.BTreeG[*item]
+	// resources is a map of all resources currently tracked in the tree
+	// the key is always name/type
+	resources       map[string]resource
 	initializationC chan struct{}
 	stale           bool
 	once            sync.Once
@@ -80,9 +86,13 @@ func NewUnifiedResourceCache(ctx context.Context, cfg UnifiedResourceCacheConfig
 			trace.Component: cfg.Component,
 		}),
 		cfg: cfg,
-		tree: btree.NewG(cfg.BTreeDegree, func(a, b *item) bool {
+		nameTree: btree.NewG(cfg.BTreeDegree, func(a, b *item) bool {
 			return a.Less(b)
 		}),
+		typeTree: btree.NewG(cfg.BTreeDegree, func(a, b *item) bool {
+			return a.Less(b)
+		}),
+		resources:       make(map[string]resource),
 		initializationC: make(chan struct{}),
 		ResourceGetter:  cfg.ResourceGetter,
 		cache:           lazyCache,
@@ -111,72 +121,160 @@ func (cfg *UnifiedResourceCacheConfig) CheckAndSetDefaults() error {
 
 // put stores the value into backend (creates if it does not
 // exist, updates it otherwise)
-func (c *UnifiedResourceCache) put(ctx context.Context, i item) error {
-	if len(i.Key) == 0 {
-		return trace.BadParameter("missing parameter key")
-	}
+func (c *UnifiedResourceCache) put(ctx context.Context, resource resource) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.tree.ReplaceOrInsert(&i)
+	key := resourceKey(resource)
+	c.resources[key] = resource
+	c.nameTree.ReplaceOrInsert(&item{Key: resourceSortKey(resource, SortByName), Value: key})
+	c.typeTree.ReplaceOrInsert(&item{Key: resourceSortKey(resource, SortByKind), Value: key})
 	return nil
 }
 
-func putResources[T resource](tree *btree.BTreeG[*item], resources []T) {
+func putResources[T resource](cache *UnifiedResourceCache, resources []T) {
 	for _, resource := range resources {
-		tree.ReplaceOrInsert(&item{Key: resourceKey(resource), Value: resource})
+		// generate the unique resource key and add the resource to the resources map
+		key := resourceKey(resource)
+		cache.resources[key] = resource
+
+		cache.nameTree.ReplaceOrInsert(&item{Key: resourceSortKey(resource, SortByName), Value: key})
+		cache.typeTree.ReplaceOrInsert(&item{Key: resourceSortKey(resource, SortByKind), Value: key})
 	}
 }
 
 // delete removes the item by key, returns NotFound error
 // if item does not exist
-func (c *UnifiedResourceCache) delete(ctx context.Context, key []byte) error {
-	if len(key) == 0 {
-		return trace.BadParameter("missing parameter key")
-	}
-	return c.read(ctx, func(tree *btree.BTreeG[*item]) error {
-		if _, ok := tree.Delete(&item{Key: key}); !ok {
-			return trace.NotFound("key %q is not found", string(key))
+func (c *UnifiedResourceCache) delete(ctx context.Context, res types.Resource) error {
+	key := resourceKey(res)
+
+	// delete generally only sends the id, so we will fetch the actual resource from our resources
+	// map and generate our sort keys. Then we can delete from the map and all the trees at once
+	resource := c.resources[key]
+
+	nameSortKey := resourceSortKey(resource, SortByName)
+	typeSortKey := resourceSortKey(resource, SortByKind)
+
+	return c.read(ctx, func(cache *UnifiedResourceCache) error {
+		if _, ok := cache.nameTree.Delete(&item{Key: nameSortKey}); !ok {
+			return trace.NotFound("key %q is not found in unified cache name sort tree", string(nameSortKey))
 		}
+		if _, ok := cache.typeTree.Delete(&item{Key: typeSortKey}); !ok {
+			return trace.NotFound("key %q is not found in unified cache type sort tree", string(typeSortKey))
+		}
+		// delete from resource map
+		delete(c.resources, key)
 		return nil
 	})
 }
 
-func (c *UnifiedResourceCache) getRange(ctx context.Context, startKey, endKey []byte, limit int) ([]resource, error) {
+func (c *UnifiedResourceCache) getSortTree(sortField string) (*btree.BTreeG[*item], error) {
+	switch sortField {
+	case SortByName:
+		return c.nameTree, nil
+	case SortByKind:
+		return c.typeTree, nil
+	default:
+		return nil, trace.NotImplemented("sorting by %v is not supporting in unified resources", sortField)
+	}
+
+}
+
+func (c *UnifiedResourceCache) getRange(ctx context.Context, startKey []byte, matchFn func(types.ResourceWithLabels) (bool, error), req *proto.ListUnifiedResourcesRequest) ([]resource, string, error) {
 	if len(startKey) == 0 {
-		return nil, trace.BadParameter("missing parameter startKey")
+		return nil, "", trace.BadParameter("missing parameter startKey")
 	}
-	if len(endKey) == 0 {
-		return nil, trace.BadParameter("missing parameter endKey")
-	}
-	if limit <= 0 {
-		limit = backend.DefaultRangeLimit
+	if req.Limit <= 0 {
+		req.Limit = backend.DefaultRangeLimit
 	}
 
 	var res []resource
-	err := c.read(ctx, func(tree *btree.BTreeG[*item]) error {
-		tree.AscendRange(&item{Key: startKey}, &item{Key: endKey}, func(item *item) bool {
-			res = append(res, item.Value)
-			if limit > 0 && len(res) >= limit {
+	var nextKey string
+	err := c.read(ctx, func(cache *UnifiedResourceCache) error {
+		tree, err := cache.getSortTree(req.SortBy.Field)
+		if err != nil {
+			return trace.Wrap(err, "getting sort tree")
+		}
+
+		iterateFunc := func(item *item) bool {
+			// get resource from resource map
+			resourceFromMap := cache.resources[item.Value]
+			if resourceFromMap == nil {
+				// continue the ascend. maybe we should throw an error?
+				return true
+			}
+
+			// check if the resource matches our filter
+			match, err := matchFn(resourceFromMap)
+			if err != nil {
+				// do something with this error eventually but continue for now
+				return true
+			}
+
+			if !match {
+				return true
+			}
+
+			// do we have all we need? set nextKey and stop iterating
+			// we do this after the matchFn to make sure they have access to the "next" node
+			if req.Limit > 0 && len(res) >= int(req.Limit) {
+				nextKey = string(item.Key)
 				return false
 			}
+			res = append(res, resourceFromMap)
 			return true
-		})
+		}
+
+		if req.SortBy.IsDesc {
+			tree.DescendRange(&item{Key: startKey}, &item{Key: backend.Key(prefix)}, iterateFunc)
+		} else {
+			tree.AscendRange(&item{Key: startKey}, &item{Key: backend.RangeEnd(backend.Key(prefix))}, iterateFunc)
+		}
 		return nil
 	})
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, "", trace.Wrap(err)
 	}
 
 	if len(res) == backend.DefaultRangeLimit {
 		c.log.Warnf("Range query hit backend limit. (this is a bug!) startKey=%q,limit=%d", startKey, backend.DefaultRangeLimit)
 	}
 
-	return res, nil
+	return res, nextKey, nil
 }
 
-// GetUnifiedResources returns a list of all resources stored in the current unifiedResourceCollector tree
+func getStartKey(req *proto.ListUnifiedResourcesRequest) []byte {
+	// if startkey exists, return it
+	if req.StartKey != "" {
+		return []byte(req.StartKey)
+	}
+	// if startkey doesnt exist, we check the the sort direction.
+	// If sort is descending, startkey is end of the list
+	if req.SortBy.IsDesc {
+		return backend.RangeEnd(backend.Key(prefix))
+	}
+	// return start of the list
+	return backend.Key(prefix)
+}
+
+func (c *UnifiedResourceCache) IterateUnifiedResources(ctx context.Context, matchFn func(types.ResourceWithLabels) (bool, error), req *proto.ListUnifiedResourcesRequest) ([]types.ResourceWithLabels, string, error) {
+	startKey := getStartKey(req)
+	result, nextKey, err := c.getRange(ctx, startKey, matchFn, req)
+	if err != nil {
+		return nil, "", trace.Wrap(err, "getting unified resource range")
+	}
+
+	resources := make([]types.ResourceWithLabels, 0, len(result))
+	for _, item := range result {
+		resources = append(resources, item.CloneResource())
+	}
+
+	return resources, nextKey, nil
+}
+
+// GetUnifiedResources returns a list of all resources stored in the current unifiedResourceCollector tree in ascending order
 func (c *UnifiedResourceCache) GetUnifiedResources(ctx context.Context) ([]types.ResourceWithLabels, error) {
-	result, err := c.getRange(ctx, backend.Key(prefix), backend.RangeEnd(backend.Key(prefix)), backend.NoLimit)
+	req := &proto.ListUnifiedResourcesRequest{Limit: backend.NoLimit, SortBy: types.SortBy{IsDesc: false, Field: SortByName}}
+	result, _, err := c.getRange(ctx, backend.Key(prefix), func(rwl types.ResourceWithLabels) (bool, error) { return true, nil }, req)
 	if err != nil {
 		return nil, trace.Wrap(err, "getting unified resource range")
 	}
@@ -213,8 +311,54 @@ func newWatcher(ctx context.Context, resourceCache *UnifiedResourceCache, cfg Re
 	return nil
 }
 
-func resourceKey(resource types.Resource) []byte {
-	return backend.Key(prefix, resource.GetName(), resource.GetKind())
+// resourceName is a unique name to be used as a key in the resources map
+func resourceKey(resource types.Resource) string {
+	return resource.GetName() + "/" + resource.GetKind()
+}
+
+// resourceSortKey will generate a key to be used in the sort trees
+func resourceSortKey(resource types.Resource, sortType string) []byte {
+	var name, kind string
+	// set the kind to the appropriate "contained" type, rather than
+	// the container type.
+	switch r := resource.(type) {
+	case types.Server:
+		name = r.GetHostname() + "/" + r.GetName()
+		kind = types.KindNode
+	case types.AppServer:
+		app := r.GetApp()
+		if app != nil {
+			name = app.GetName()
+			kind = types.KindApp
+		}
+	case types.SAMLIdPServiceProvider:
+		name = r.GetName()
+		kind = types.KindApp
+	case types.KubeServer:
+		cluster := r.GetCluster()
+		if cluster != nil {
+			name = r.GetCluster().GetName()
+			kind = types.KindKubernetesCluster
+		}
+	case types.DatabaseServer:
+		db := r.GetDatabase()
+		if db != nil {
+			name = db.GetName()
+			kind = types.KindDatabase
+		}
+	default:
+		name = resource.GetName()
+		kind = resource.GetKind()
+	}
+
+	switch sortType {
+	case SortByName:
+		return backend.Key(prefix, name, kind)
+	case SortByKind:
+		return backend.Key(prefix, kind, name)
+	default:
+		return backend.Key(prefix, name, kind)
+	}
 }
 
 func (c *UnifiedResourceCache) getResourcesAndUpdateCurrent(ctx context.Context) error {
@@ -255,14 +399,19 @@ func (c *UnifiedResourceCache) getResourcesAndUpdateCurrent(ctx context.Context)
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.tree.Clear(false)
-	putResources[types.Server](c.tree, newNodes)
-	putResources[types.DatabaseServer](c.tree, newDbs)
-	putResources[types.AppServer](c.tree, newApps)
-	putResources[types.KubeServer](c.tree, newKubes)
-	putResources[types.SAMLIdPServiceProvider](c.tree, newSAMLApps)
-	putResources[types.WindowsDesktop](c.tree, newDesktops)
-	putResources[*accesslist.AccessList](c.tree, newAccessLists)
+	// empty the trees
+	c.nameTree.Clear(false)
+	c.typeTree.Clear(false)
+	// clear the resource map as well
+	c.resources = make(map[string]resource)
+
+	putResources[types.Server](c, newNodes)
+	putResources[types.DatabaseServer](c, newDbs)
+	putResources[types.AppServer](c, newApps)
+	putResources[types.KubeServer](c, newKubes)
+	putResources[types.SAMLIdPServiceProvider](c, newSAMLApps)
+	putResources[types.WindowsDesktop](c, newDesktops)
+	putResources[*accesslist.AccessList](c, newAccessLists)
 	c.stale = false
 	c.defineCollectorAsInitialized()
 	return nil
@@ -399,20 +548,23 @@ func (c *UnifiedResourceCache) getAccessLists(ctx context.Context) ([]*accesslis
 // read applies the supplied closure to either the primary tree or the ttl-based fallback tree depending on
 // wether or not the cache is currently healthy.  locking is handled internally and the passed-in tree should
 // not be accessed after the closure completes.
-func (c *UnifiedResourceCache) read(ctx context.Context, fn func(tree *btree.BTreeG[*item]) error) error {
+func (c *UnifiedResourceCache) read(ctx context.Context, fn func(cache *UnifiedResourceCache) error) error {
 	c.mu.Lock()
 
 	if !c.stale {
-		fn(c.tree)
+		fn(c)
 		c.mu.Unlock()
 		return nil
 	}
 
 	c.mu.Unlock()
-	ttlTree, err := utils.FnCacheGet(ctx, c.cache, "unified_resources", func(ctx context.Context) (*btree.BTreeG[*item], error) {
+	ttlCache, err := utils.FnCacheGet(ctx, c.cache, "unified_resources", func(ctx context.Context) (*UnifiedResourceCache, error) {
 		fallbackCache := &UnifiedResourceCache{
 			cfg: c.cfg,
-			tree: btree.NewG(c.cfg.BTreeDegree, func(a, b *item) bool {
+			nameTree: btree.NewG(c.cfg.BTreeDegree, func(a, b *item) bool {
+				return a.Less(b)
+			}),
+			typeTree: btree.NewG(c.cfg.BTreeDegree, func(a, b *item) bool {
 				return a.Less(b)
 			}),
 			ResourceGetter:  c.ResourceGetter,
@@ -421,13 +573,13 @@ func (c *UnifiedResourceCache) read(ctx context.Context, fn func(tree *btree.BTr
 		if err := fallbackCache.getResourcesAndUpdateCurrent(ctx); err != nil {
 			return nil, trace.Wrap(err)
 		}
-		return fallbackCache.tree, nil
+		return fallbackCache, nil
 	})
 	c.mu.Lock()
 
 	if !c.stale {
 		// primary became healthy while we were waiting
-		fn(c.tree)
+		fn(c)
 		c.mu.Unlock()
 		return nil
 	}
@@ -438,7 +590,7 @@ func (c *UnifiedResourceCache) read(ctx context.Context, fn func(tree *btree.BTr
 		return trace.Wrap(err)
 	}
 
-	fn(ttlTree)
+	fn(ttlCache)
 	return nil
 }
 
@@ -471,12 +623,9 @@ func (c *UnifiedResourceCache) processEventAndUpdateCurrent(ctx context.Context,
 
 	switch event.Type {
 	case types.OpDelete:
-		c.delete(ctx, resourceKey(event.Resource))
+		c.delete(ctx, event.Resource)
 	case types.OpPut:
-		c.put(ctx, item{
-			Key:   resourceKey(event.Resource),
-			Value: event.Resource.(resource),
-		})
+		c.put(ctx, event.Resource.(resource))
 	default:
 		c.log.Warnf("unsupported event type %s.", event.Type)
 		return
@@ -534,12 +683,18 @@ type resource interface {
 }
 
 type item struct {
-	// Key is a key of the key value item
+	// Key is a key of the key value item. This will be different based on which sorting tree
+	// the item is in
 	Key []byte
-	// Value represents a resource such as types.Server or types.DatabaseServer
-	Value resource
+	// Value will be the resourceKey used in the resources map to get the resource
+	Value string
 }
 
 const (
 	prefix = "unified_resource"
+)
+
+const (
+	SortByName string = "name"
+	SortByKind string = "kind"
 )
