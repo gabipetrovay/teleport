@@ -81,6 +81,7 @@ export function ResourceCard({ resource, onLabelClick }: Props) {
   const [showMoreLabelsButton, setShowMoreLabelsButton] = useState(false);
   const [showAllLabels, setShowAllLabels] = useState(false);
   const [numMoreLabels, setNumMoreLabels] = useState(0);
+  const [hovered, setHovered] = useState(false);
 
   const nameTextRef = useRef<HTMLDivElement | null>(null);
   const [isNameOverflowed, setIsNameOverflowed] = useState(false);
@@ -138,13 +139,26 @@ export function ResourceCard({ resource, onLabelClick }: Props) {
   };
 
   return (
-    <CardContainer>
+    <CardContainer
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       <CardInnerContainer
         p={3}
         alignItems="start"
         showAllLabels={showAllLabels}
         onMouseLeave={() => setShowAllLabels(false)}
       >
+        {/* <Flex
+          css={`
+            background-color: red;
+            height: 100%;
+          `}
+          flexDirection="column"
+        >
+          <Box flex={1}>Check</Box>
+          <div>Pin</div>
+        </Flex> */}
         <ResourceIcon name={resIcon} width="45px" height="45px" ml={2} />
         {/* MinWidth is important to prevent descriptions from overflowing. */}
         <Flex flexDirection="column" flex="1" minWidth="0" ml={3} gap={1}>
@@ -162,7 +176,7 @@ export function ResourceCard({ resource, onLabelClick }: Props) {
                 </Text>
               )}
             </SingleLineBox>
-            <CopyButton name={name} />
+            {hovered && <CopyButton name={name} />}
             <ResourceActionButton resource={resource} />
           </Flex>
           <Flex flexDirection="row" alignItems="center">
@@ -420,6 +434,7 @@ const SingleLineBox = styled(Box)`
   text-overflow: ellipsis;
 `;
 
+// TODO (avatus): move to design or shared when we implement list view
 export const HoverTooltip: React.FC<{
   tipContent: React.ReactElement;
   fontSize?: number;

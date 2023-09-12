@@ -86,6 +86,7 @@ export default function getResourceUrlQueryParams(
   const search = searchParams.get('search');
   const sort = searchParams.get('sort');
   const kinds = searchParams.has('kinds') ? searchParams.getAll('kinds') : null;
+  const selectedTab = searchParams.get('selectedTab');
 
   const sortParam = sort ? sort.split(':') : null;
 
@@ -101,6 +102,7 @@ export default function getResourceUrlQueryParams(
     query,
     search,
     kinds,
+    selectedTab,
     // Conditionally adds the sort field based on whether it exists or not
     ...(!!processedSortParam && { sort: processedSortParam }),
   };

@@ -26,6 +26,8 @@ import { ArrowUp, ArrowDown, ChevronDown } from 'design/Icon';
 import { encodeUrlQueryParams } from 'teleport/components/hooks/useUrlFiltering';
 import { ResourceFilter, SortType } from 'teleport/services/agents';
 
+import { HoverTooltip } from './ResourceCard';
+
 const kindOptions = [
   { label: 'Application', value: 'app' },
   { label: 'Database', value: 'db' },
@@ -85,7 +87,7 @@ export function FilterPanel({
   };
 
   return (
-    <Flex justifyContent="space-between" mb={2}>
+    <Flex justifyContent="space-between" mb={3}>
       <FilterTypesMenu
         onChange={onKindsChanged}
         kindsFromParams={kinds || []}
@@ -158,18 +160,20 @@ const FilterTypesMenu = ({
 
   return (
     <Flex textAlign="center" alignItems="center" mt={1}>
-      <ButtonSecondary
-        px={2}
-        css={`
-          border-color: ${props => props.theme.colors.spotBackground[0]};
-        `}
-        textTransform="none"
-        size="small"
-        onClick={handleOpen}
-      >
-        Type
-        <ChevronDown ml={2} size="small" color="text.slightlyMuted" />
-      </ButtonSecondary>
+      <HoverTooltip tipContent={<>Filter Types</>}>
+        <ButtonSecondary
+          px={2}
+          css={`
+            border-color: ${props => props.theme.colors.spotBackground[0]};
+          `}
+          textTransform="none"
+          size="small"
+          onClick={handleOpen}
+        >
+          Type
+          <ChevronDown ml={2} size="small" color="text.slightlyMuted" />
+        </ButtonSecondary>
+      </HoverTooltip>
       <Menu
         popoverCss={() => `margin-top: 36px;`}
         transformOrigin={{
@@ -256,20 +260,22 @@ const SortMenu: React.FC<SortMenuProps> = props => {
 
   return (
     <Flex textAlign="center" alignItems="center">
-      <ButtonBorder
-        css={`
-          border-right: none;
-          border-top-right-radius: 0;
-          border-bottom-right-radius: 0;
-          border-color: ${props => props.theme.colors.spotBackground[0]};
-        `}
-        textTransform="none"
-        size="small"
-        px={2}
-        onClick={handleOpen}
-      >
-        {sortType}
-      </ButtonBorder>
+      <HoverTooltip tipContent={<>Sort Type</>}>
+        <ButtonBorder
+          css={`
+            border-right: none;
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+            border-color: ${props => props.theme.colors.spotBackground[0]};
+          `}
+          textTransform="none"
+          size="small"
+          px={2}
+          onClick={handleOpen}
+        >
+          {sortType}
+        </ButtonBorder>
+      </HoverTooltip>
       <Menu
         popoverCss={() => `margin-top: 36px;`}
         transformOrigin={{
@@ -287,19 +293,28 @@ const SortMenu: React.FC<SortMenuProps> = props => {
         <MenuItem onClick={() => handleSelect('name')}>Name</MenuItem>
         <MenuItem onClick={() => handleSelect('kind')}>Type</MenuItem>
       </Menu>
-      <ButtonBorder
-        onClick={onDirChange}
-        textTransform="none"
-        css={`
-          width: 0px; // remove extra width around the button icon
-          border-top-left-radius: 0;
-          border-bottom-left-radius: 0;
-          border-color: ${props => props.theme.colors.spotBackground[0]};
-        `}
-        size="small"
-      >
-        {sortDir === 'ASC' ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
-      </ButtonBorder>
+      <HoverTooltip tipContent={<>Sort Direction</>}>
+        <ButtonBorder
+          onClick={onDirChange}
+          textTransform="none"
+          css={`
+            width: 0px; // remove extra width around the button icon
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            border-color: ${props => props.theme.colors.spotBackground[0]};
+          `}
+          size="small"
+        >
+          {sortDir === 'ASC' ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
+        </ButtonBorder>
+        {/* <ButtonIcon setRef={copyAnchorEl} size={0} mr={2} onClick={handleCopy}>
+        {copiedText === copySuccess ? (
+          <Check size="small" />
+        ) : (
+          <Copy size="small" />
+        )}
+      </ButtonIcon> */}
+      </HoverTooltip>
     </Flex>
   );
 };

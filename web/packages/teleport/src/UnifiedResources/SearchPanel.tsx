@@ -47,7 +47,7 @@ export function SearchPanel({
   }
 
   return (
-    <Flex as="form" style={{ width: '70%' }} onSubmit={onSubmitSearch} mb={2}>
+    <Flex as="form" style={{ width: '70%' }} onSubmit={onSubmitSearch} mb={3}>
       <SearchInput searchValue={searchString} setSearchValue={setSearchString}>
         <ToggleWrapper>
           <Toggle isToggled={isAdvancedSearch} onToggle={onToggle} />

@@ -48,6 +48,17 @@ const INITIAL_FETCH_SIZE = 48;
 // increment by 24 every fetch
 const FETCH_MORE_SIZE = 24;
 
+const tabs: { label: string; value: string }[] = [
+  {
+    label: 'All Resources',
+    value: 'all',
+  },
+  {
+    label: 'Pinned Resources',
+    value: 'pinned',
+  },
+];
+
 const loadingCardArray = new Array(FETCH_MORE_SIZE).fill(undefined);
 
 export function Resources() {
@@ -160,6 +171,19 @@ export function Resources() {
         pathname={pathname}
         replaceHistory={replaceHistory}
       />
+      <Flex gap={4} mb={3}>
+        {tabs.map(({ value, label }) => (
+          <ResourceTab
+            key={value}
+            value={value}
+            onChange={(tab: string) =>
+              setParams({ ...params, selectedTab: tab })
+            }
+            selectedTab={params.selectedTab}
+            title={label}
+          />
+        ))}
+      </Flex>
       {attempt.status === 'failed' && (
         <ErrorMessage message={attempt.statusText} />
       )}
@@ -244,3 +268,49 @@ const emptyStateInfo: EmptyStateInfo = {
   },
   resourceType: 'unified_resource',
 };
+
+type ResourceTabProps = {
+  title: string;
+  value: string;
+  selectedTab: string;
+  onChange: (value: string) => void;
+};
+
+const ResourceTab = ({
+  title,
+  value,
+  selectedTab,
+  onChange,
+}: ResourceTabProps) => {
+  const selectTab = () => {
+    onChange(value);
+  };
+
+  const selected = value === selectedTab;
+
+  return (
+    <Box onClick={selectTab}>
+      <TabText selected={selected}>{title}</TabText>
+      <TabTextUnderline selected={selected} />
+    </Box>
+  );
+};
+
+const TabText = styled(Text)`
+  font-size: ${props => props.theme.fontSizes[2]};
+  font-weight: ${props =>
+    props.selected
+      ? props.theme.fontWeights.bold
+      : props.theme.fontWeights.regular};
+  line-height: 20px;
+
+  color: ${props =>
+    props.selected ? props.theme.colors.brand : props.theme.colors.main};
+`;
+
+const TabTextUnderline = styled(Box)`
+  height: 2px;
+  // transparent background if not selected to preserve layout
+  background-color: ${props =>
+    props.selected ? props.theme.colors.brand : 'transparent'};
+`;

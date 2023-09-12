@@ -32,6 +32,10 @@ export default function generateResourcePath(
       ].dir.toLowerCase()}`;
     } else if (param === 'kinds') {
       processedParams[param] = (params[param] ?? []).join('&kinds=');
+    } else if (param === 'pinnedResourcesIDs') {
+      processedParams[param] = (params[param] ?? []).join(
+        '&pinnedResourcesIDs='
+      );
     } else
       processedParams[param] = params[param]
         ? encodeURIComponent(params[param])
@@ -46,7 +50,8 @@ export default function generateResourcePath(
     .replace(':search?', processedParams.search || '')
     .replace(':searchAsRoles?', processedParams.searchAsRoles || '')
     .replace(':sort?', processedParams.sort || '')
-    .replace(':kinds?', processedParams.kinds || '');
+    .replace(':kinds?', processedParams.kinds || '')
+    .replace(':pinnedResourcesIDs?', processedParams.pinnedResourcesIDs || '');
 
   return output;
 }
