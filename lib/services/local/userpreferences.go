@@ -21,6 +21,7 @@ package local
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/gravitational/trace"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -44,6 +45,7 @@ func DefaultUserPreferences() *userpreferencesv1.UserPreferences {
 		Onboard: &userpreferencesv1.OnboardUserPreferences{
 			PreferredResources: []userpreferencesv1.Resource{},
 		},
+		PinnedResources: &userpreferencesv1.PinnedResourcesUserPreferences{},
 	}
 }
 
@@ -85,16 +87,28 @@ func (u *UserPreferencesService) UpsertUserPreferences(ctx context.Context, user
 		preferences = DefaultUserPreferences()
 	}
 
+	fmt.Println("---------here0------")
+	fmt.Printf("%+v\n", prefs)
+	fmt.Println("---------------")
 	if err := overwriteValues(preferences, prefs); err != nil {
 		return trace.Wrap(err)
 	}
 
+	fmt.Println("---------here------")
+	fmt.Printf("%+v\n", prefs)
+	fmt.Println("---------------")
 	item, err := createBackendItem(username, preferences)
 	if err != nil {
 		return trace.Wrap(err)
 	}
+	fmt.Println("---------here2------")
+	fmt.Printf("%+v\n", prefs)
+	fmt.Println("---------------")
 
 	_, err = u.Put(ctx, item)
+	fmt.Println("---------here3------")
+	fmt.Printf("%+v\n", prefs)
+	fmt.Println("---------------")
 
 	return trace.Wrap(err)
 }
@@ -157,8 +171,11 @@ func createBackendItem(username string, preferences *userpreferencesv1.UserPrefe
 // This function uses proto.Ranges internally to iterate over the fields in src.
 // Because of this, only non-nil/empty fields in src will overwrite the values in dst.
 func overwriteValues(dst, src protoreflect.ProtoMessage) error {
+	fmt.Println("--------hihi----------")
 	d := dst.ProtoReflect()
+	fmt.Println("--------hihi222----------")
 	s := src.ProtoReflect()
+	fmt.Println("--------33333----------")
 
 	dName := d.Descriptor().FullName().Name()
 	sName := s.Descriptor().FullName().Name()
@@ -167,7 +184,9 @@ func overwriteValues(dst, src protoreflect.ProtoMessage) error {
 		return trace.BadParameter("dst and src must be the same type")
 	}
 
+	fmt.Println("--------444----------")
 	overwriteValuesRecursive(d, s)
+	fmt.Println("--------5555----------")
 
 	return nil
 }
@@ -177,6 +196,8 @@ func overwriteValues(dst, src protoreflect.ProtoMessage) error {
 func overwriteValuesRecursive(dst, src protoreflect.Message) {
 	src.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
 		switch {
+		case fd.IsMap():
+			fmt.Printf("%+v\n", fd)
 		case fd.Message() != nil:
 			overwriteValuesRecursive(dst.Mutable(fd).Message(), src.Get(fd).Message())
 		default:
