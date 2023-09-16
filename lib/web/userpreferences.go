@@ -38,9 +38,10 @@ type OnboardUserPreferencesResponse struct {
 
 // UserPreferencesResponse is the JSON response for the user preferences.
 type UserPreferencesResponse struct {
-	Assist  AssistUserPreferencesResponse  `json:"assist"`
-	Theme   userpreferencesv1.Theme        `json:"theme"`
-	Onboard OnboardUserPreferencesResponse `json:"onboard"`
+	Assist          AssistUserPreferencesResponse  `json:"assist"`
+	Theme           userpreferencesv1.Theme        `json:"theme"`
+	Onboard         OnboardUserPreferencesResponse `json:"onboard"`
+	PinnedResources map[string][]string            `json:"pinnedResources"`
 }
 
 // getUserPreferences is a handler for GET /webapi/user/preferences
@@ -81,6 +82,7 @@ func (h *Handler) updateUserPreferences(_ http.ResponseWriter, r *http.Request, 
 			Onboard: &userpreferencesv1.OnboardUserPreferences{
 				PreferredResources: req.Onboard.PreferredResources,
 			},
+			PinnedResources: convertToPinnedResources(req.PinnedResources),
 		},
 	}
 
@@ -91,15 +93,38 @@ func (h *Handler) updateUserPreferences(_ http.ResponseWriter, r *http.Request, 
 	return OK(), nil
 }
 
+func convertToPinnedResources(pinnedResources map[string][]string) *userpreferencesv1.PinnedResourcesUserPreferences {
+	pinnedResourcesProto := make(map[string]*userpreferencesv1.ClusterPinnedResources)
+
+	for key, values := range pinnedResources {
+		pinnedResourcesProto[key] = &userpreferencesv1.ClusterPinnedResources{
+			ResourceIds: values,
+		}
+	}
+
+	return &userpreferencesv1.PinnedResourcesUserPreferences{
+		PinnedResources: pinnedResourcesProto,
+	}
+}
+
 // userPreferencesResponse creates a JSON response for the user preferences.
 func userPreferencesResponse(resp *userpreferencesv1.UserPreferences) *UserPreferencesResponse {
 	jsonResp := &UserPreferencesResponse{
-		Assist:  assistUserPreferencesResponse(resp.Assist),
-		Theme:   resp.Theme,
-		Onboard: onboardUserPreferencesResponse(resp.Onboard),
+		Assist:          assistUserPreferencesResponse(resp.Assist),
+		Theme:           resp.Theme,
+		Onboard:         onboardUserPreferencesResponse(resp.Onboard),
+		PinnedResources: pinnedResourcesUserPreferencesResponse(resp.PinnedResources),
 	}
 
 	return jsonResp
+}
+
+func pinnedResourcesUserPreferencesResponse(resp *userpreferencesv1.PinnedResourcesUserPreferences) map[string][]string {
+	pinnedResources := make(map[string][]string)
+	for key, value := range resp.PinnedResources {
+		pinnedResources[key] = value.ResourceIds
+	}
+	return pinnedResources
 }
 
 // assistUserPreferencesResponse creates a JSON response for the assist user preferences.
