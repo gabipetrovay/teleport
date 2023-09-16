@@ -47,5 +47,6 @@ export function makeDefaultUserPreferences(): UserPreferences {
     onboard: {
       preferredResources: [],
     },
+    pinnedResources: {},
   };
 }

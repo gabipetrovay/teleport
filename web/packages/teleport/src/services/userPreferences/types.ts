@@ -36,10 +36,13 @@ export type OnboardUserPreferences = {
   preferredResources: ClusterResource[];
 };
 
+export type PinnedResourcesUserPreferences = Record<string, string[]>;
+
 export interface UserPreferences {
   theme: ThemePreference;
   assist: AssistUserPreferences;
   onboard: OnboardUserPreferences;
+  pinnedResources: PinnedResourcesUserPreferences;
 }
 
 export type GetUserPreferencesResponse = UserPreferences;
