@@ -61,6 +61,7 @@ func TestService_GetUserPreferences(t *testing.T) {
 					Onboard: &userpreferencesv1.OnboardUserPreferences{
 						PreferredResources: []userpreferencesv1.Resource{},
 					},
+					PinnedResources: &userpreferencesv1.PinnedResourcesUserPreferences{},
 				},
 			},
 			wantErr: assert.NoError,
@@ -100,6 +101,7 @@ func TestService_UpsertUserPreferences(t *testing.T) {
 		Onboard: &userpreferencesv1.OnboardUserPreferences{
 			PreferredResources: []userpreferencesv1.Resource{},
 		},
+		PinnedResources: &userpreferencesv1.PinnedResourcesUserPreferences{},
 	}
 
 	tests := []struct {
