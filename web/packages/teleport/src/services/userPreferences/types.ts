@@ -36,6 +36,7 @@ export type OnboardUserPreferences = {
   preferredResources: ClusterResource[];
 };
 
+// PinnedResourcesUserPreferences is a map of ClusterID to an array of unified_ids of a resource
 export type PinnedResourcesUserPreferences = Record<string, string[]>;
 
 export interface UserPreferences {

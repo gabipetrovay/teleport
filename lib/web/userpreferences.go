@@ -82,7 +82,7 @@ func (h *Handler) updateUserPreferences(_ http.ResponseWriter, r *http.Request, 
 			Onboard: &userpreferencesv1.OnboardUserPreferences{
 				PreferredResources: req.Onboard.PreferredResources,
 			},
-			PinnedResources: convertToPinnedResources(req.PinnedResources),
+			PinnedResources: convertToPinnedResourcesUserPreferencesProto(req.PinnedResources),
 		},
 	}
 
@@ -93,8 +93,8 @@ func (h *Handler) updateUserPreferences(_ http.ResponseWriter, r *http.Request, 
 	return OK(), nil
 }
 
-func convertToPinnedResources(pinnedResources map[string][]string) *userpreferencesv1.PinnedResourcesUserPreferences {
-	pinnedResourcesProto := make(map[string]*userpreferencesv1.ClusterPinnedResources)
+func convertToPinnedResourcesUserPreferencesProto(pinnedResources map[string][]string) *userpreferencesv1.PinnedResourcesUserPreferences {
+	pinnedResourcesProto := make(map[string]*userpreferencesv1.ClusterPinnedResources, len(pinnedResources))
 
 	for key, values := range pinnedResources {
 		pinnedResourcesProto[key] = &userpreferencesv1.ClusterPinnedResources{
@@ -120,7 +120,7 @@ func userPreferencesResponse(resp *userpreferencesv1.UserPreferences) *UserPrefe
 }
 
 func pinnedResourcesUserPreferencesResponse(resp *userpreferencesv1.PinnedResourcesUserPreferences) map[string][]string {
-	pinnedResources := make(map[string][]string)
+	pinnedResources := make(map[string][]string, len(resp.PinnedResources))
 	for key, value := range resp.PinnedResources {
 		pinnedResources[key] = value.ResourceIds
 	}
