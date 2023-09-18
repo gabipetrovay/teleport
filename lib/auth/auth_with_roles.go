@@ -1627,9 +1627,33 @@ func (a *ServerWithRoles) ListUnifiedResources(ctx context.Context, req *proto.L
 	}()
 
 	startFetch := time.Now()
-	unifiedResources, err := a.authServer.UnifiedResourceCache.GetUnifiedResources(ctx)
-	if err != nil {
-		return nil, trace.Wrap(err)
+	if req.PinnedResources {
+		ids := make([]string, 0)
+		clusterName, err := a.authServer.GetClusterName()
+		if err != nil {
+			return nil, trace.Wrap(err, "getting cluster name")
+		}
+
+		prefs, err := a.authServer.GetUserPreferences(ctx, a.context.User.GetName())
+		if err != nil {
+			return nil, trace.Wrap(err, "getting user preferences")
+		}
+		clusters := prefs.PinnedResources.GetPinnedResources()
+		clusterIds, ok := clusters[clusterName.GetClusterName()]
+		if ok {
+			ids = clusterIds.ResourceIds
+		}
+		resp, err := a.authServer.UnifiedResourceCache.GetUnifiedResourcesByID(ctx, ids)
+		if err != nil {
+			return nil, trace.Wrap(err, "getting unified resources by ID")
+		}
+		unifiedResources = resp
+	} else {
+		resp, err := a.authServer.UnifiedResourceCache.GetUnifiedResources(ctx)
+		if err != nil {
+			return nil, trace.Wrap(err, "getting unified resources")
+		}
+		unifiedResources = resp
 	}
 
 	elapsedFetch = time.Since(startFetch)

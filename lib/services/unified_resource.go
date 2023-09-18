@@ -189,6 +189,27 @@ func (c *UnifiedResourceCache) GetUnifiedResources(ctx context.Context) ([]types
 	return resources, nil
 }
 
+func (c *UnifiedResourceCache) GetUnifiedResourcesByID(ctx context.Context, ids []string) ([]types.ResourceWithLabels, error) {
+	var resources []types.ResourceWithLabels
+
+	// TODO (avatus): this will change from looping through a tree to pulling from a map[string]resource
+	// once we add our sort indexes
+	err := c.read(ctx, func(tree *btree.BTreeG[*item]) error {
+		for _, id := range ids {
+			res, found := tree.Get(&item{Key: backend.Key(prefix, id)})
+			if found {
+				resources = append(resources, res.Value.CloneResource())
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, trace.Wrap(err, "getting unified resources by id")
+	}
+
+	return resources, nil
+}
+
 // ResourceGetter is an interface that provides a way to fetch all the resources
 // that can be stored in the UnifiedResourceCache
 type ResourceGetter interface {
@@ -214,7 +235,26 @@ func newWatcher(ctx context.Context, resourceCache *UnifiedResourceCache, cfg Re
 }
 
 func resourceKey(resource types.Resource) []byte {
-	return backend.Key(prefix, resource.GetName(), resource.GetKind())
+	kind := resource.GetKind()
+	// get the appropriate resource from it's container resource.
+	// This matches the actual data being sent to the UI but still
+	// watches the correct resource type
+	switch r := resource.(type) {
+	case types.AppServer:
+		if app := r.GetApp(); app != nil {
+			kind = app.GetKind()
+		}
+	case types.KubeServer:
+		if cluster := r.GetCluster(); cluster != nil {
+			kind = cluster.GetKind()
+		}
+	case types.DatabaseServer:
+		if db := r.GetDatabase(); db != nil {
+			kind = db.GetKind()
+		}
+	default:
+	}
+	return backend.Key(prefix, resource.GetName(), kind)
 }
 
 func (c *UnifiedResourceCache) getResourcesAndUpdateCurrent(ctx context.Context) error {
