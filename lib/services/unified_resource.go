@@ -237,24 +237,18 @@ func newWatcher(ctx context.Context, resourceCache *UnifiedResourceCache, cfg Re
 
 func resourceKey(resource types.Resource) []byte {
 	var kind string
-	// get the appropriate resource from it's container resource.
-	// This matches the actual data being sent to the UI but still
-	// watches the correct resource type
+	// set the kind to the appropriate "contained" type, rather than
+	// the container type. This better represents what resource is
+	// being sent to the ui
 	switch r := resource.(type) {
-	case types.AppServer:
-		if app := r.GetApp(); app != nil {
-			kind = app.GetKind()
-		}
+	case types.AppServer, types.SAMLIdPServiceProvider:
+		kind = types.KindApp
 	case types.KubeServer:
-		if cluster := r.GetCluster(); cluster != nil {
-			kind = cluster.GetKind()
-		}
+		kind = types.KindKubernetesCluster
 	case types.DatabaseServer:
-		if db := r.GetDatabase(); db != nil {
-			kind = db.GetKind()
-		}
+		kind = types.KindDatabase
 	default:
-		kind = resource.GetKind()
+		kind = r.GetKind()
 	}
 	return backend.Key(prefix, resource.GetName(), kind)
 }
