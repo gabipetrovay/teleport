@@ -189,7 +189,8 @@ func (c *UnifiedResourceCache) GetUnifiedResources(ctx context.Context) ([]types
 	return resources, nil
 }
 
-func (c *UnifiedResourceCache) GetUnifiedResourcesByID(ctx context.Context, ids []string) ([]types.ResourceWithLabels, error) {
+// GetUnifiedResourcesByIDs will take a list of ids and return any items found in the unifiedResourceCache tree by id
+func (c *UnifiedResourceCache) GetUnifiedResourcesByIDs(ctx context.Context, ids []string) ([]types.ResourceWithLabels, error) {
 	var resources []types.ResourceWithLabels
 
 	// TODO (avatus): this will change from looping through a tree to pulling from a map[string]resource
@@ -235,7 +236,7 @@ func newWatcher(ctx context.Context, resourceCache *UnifiedResourceCache, cfg Re
 }
 
 func resourceKey(resource types.Resource) []byte {
-	kind := resource.GetKind()
+	var kind string
 	// get the appropriate resource from it's container resource.
 	// This matches the actual data being sent to the UI but still
 	// watches the correct resource type
@@ -253,6 +254,7 @@ func resourceKey(resource types.Resource) []byte {
 			kind = db.GetKind()
 		}
 	default:
+		kind = resource.GetKind()
 	}
 	return backend.Key(prefix, resource.GetName(), kind)
 }
