@@ -1643,7 +1643,7 @@ func (a *ServerWithRoles) ListUnifiedResources(ctx context.Context, req *proto.L
 		if ok {
 			ids = clusterIds.ResourceIds
 		}
-		resp, err := a.authServer.UnifiedResourceCache.GetUnifiedResourcesByID(ctx, ids)
+		resp, err := a.authServer.UnifiedResourceCache.GetUnifiedResourcesByIDs(ctx, ids)
 		if err != nil {
 			return nil, trace.Wrap(err, "getting unified resources by ID")
 		}
