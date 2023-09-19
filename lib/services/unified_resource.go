@@ -193,8 +193,6 @@ func (c *UnifiedResourceCache) GetUnifiedResources(ctx context.Context) ([]types
 func (c *UnifiedResourceCache) GetUnifiedResourcesByIDs(ctx context.Context, ids []string) ([]types.ResourceWithLabels, error) {
 	var resources []types.ResourceWithLabels
 
-	// TODO (avatus): this will change from looping through a tree to pulling from a map[string]resource
-	// once we add our sort indexes
 	err := c.read(ctx, func(tree *btree.BTreeG[*item]) error {
 		for _, id := range ids {
 			res, found := tree.Get(&item{Key: backend.Key(prefix, id)})
