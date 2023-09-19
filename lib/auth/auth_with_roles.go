@@ -1640,9 +1640,13 @@ func (a *ServerWithRoles) ListUnifiedResources(ctx context.Context, req *proto.L
 		}
 		clusters := prefs.PinnedResources.GetPinnedResources()
 		clusterIDs, ok := clusters[clusterName.GetClusterName()]
-		if ok {
-			ids = clusterIDs.ResourceIds
+		if !ok {
+			return &proto.ListUnifiedResourcesResponse{
+				NextKey:   "",
+				Resources: nil,
+			}, nil
 		}
+		ids = clusterIDs.ResourceIds
 		resp, err := a.authServer.UnifiedResourceCache.GetUnifiedResourcesByIDs(ctx, ids)
 		if err != nil {
 			return nil, trace.Wrap(err, "getting unified resources by ID")
