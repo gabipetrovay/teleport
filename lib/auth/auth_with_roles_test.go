@@ -4207,8 +4207,7 @@ func TestListUnifiedResources_WithPinnedResources(t *testing.T) {
 	ctx := context.Background()
 	srv := newTestTLSServer(t)
 	names := []string{"tifa", "cloud", "aerith", "baret", "cid", "tifa2"}
-	for i := 0; i < 6; i++ {
-		name := names[i]
+	for _, name := range names {
 
 		// add nodes
 		node, err := types.NewServerWithLabels(
@@ -4224,9 +4223,6 @@ func TestListUnifiedResources_WithPinnedResources(t *testing.T) {
 		_, err = srv.Auth().UpsertNode(ctx, node)
 		require.NoError(t, err)
 	}
-	testNodes, err := srv.Auth().GetNodes(ctx, apidefaults.Namespace)
-	require.NoError(t, err)
-	require.Len(t, testNodes, 6)
 
 	// create user, role, and client
 	username := "theuser"
@@ -4260,7 +4256,7 @@ func TestListUnifiedResources_WithPinnedResources(t *testing.T) {
 	// Check that our returned resource is the pinned resource
 	for _, resource := range resp.Resources {
 		r := resource.GetNode()
-		require.True(t, strings.Contains(r.GetHostname(), "tifa"))
+		require.Contains(t, r.GetHostname(), "tifa")
 	}
 }
 
