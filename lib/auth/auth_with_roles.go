@@ -1627,7 +1627,7 @@ func (a *ServerWithRoles) ListUnifiedResources(ctx context.Context, req *proto.L
 	}()
 
 	startFetch := time.Now()
-	if req.PinnedResources {
+	if req.PinnedResourcesOnly {
 		var ids []string
 		clusterName, err := a.authServer.GetClusterName()
 		if err != nil {

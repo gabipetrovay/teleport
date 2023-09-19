@@ -4248,7 +4248,7 @@ func TestListUnifiedResources_WithPinnedResources(t *testing.T) {
 	clt, err := srv.NewClient(identity)
 	require.NoError(t, err)
 	resp, err := clt.ListUnifiedResources(ctx, &proto.ListUnifiedResourcesRequest{
-		PinnedResources: true,
+		PinnedResourcesOnly: true,
 	})
 	require.NoError(t, err)
 	require.Len(t, resp.Resources, 1)

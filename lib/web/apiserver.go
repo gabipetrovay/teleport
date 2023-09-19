@@ -2505,7 +2505,7 @@ func makeUnifiedResourceRequest(r *http.Request) (*proto.ListUnifiedResourcesReq
 		Limit:               limit,
 		StartKey:            startKey,
 		SortBy:              sortBy,
-		PinnedResources:     values.Get("pinnedResources") == "true",
+		PinnedResourcesOnly: values.Get("pinnedResourcesOnly") == "true",
 		PredicateExpression: values.Get("query"),
 		SearchKeywords:      client.ParseSearchKeywords(values.Get("search"), ' '),
 		UseSearchAsRoles:    values.Get("searchAsRoles") == "yes",

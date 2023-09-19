@@ -1781,9 +1781,9 @@ message ListUnifiedResourcesRequest {
   // UsePreviewAsRoles indicates that the response should include all resources
   // the caller would be able to access with their preview_as_roles
   bool UsePreviewAsRoles = 10 [(gogoproto.jsontag) = "use_preview_as_roles,omitempty"];
-  // PinnedResources indicates that the request will pull only the pinned resources
+  // PinnedResourcesOnly indicates that the request will pull only the pinned resources
   // of the requesting user
-  bool PinnedResources = 11 [(gogoproto.jsontag) = "pinned_resources,omitempty"];
+  bool PinnedResourcesOnly = 11 [(gogoproto.jsontag) = "pinned_resources_only,omitempty"];
 }
 
 // ListUnifiedResourceResponse response of ListUnifiedResources.
