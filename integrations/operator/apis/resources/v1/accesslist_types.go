@@ -81,6 +81,8 @@ func (l TeleportAccessList) ToTeleport() *accesslist.AccessList {
 	return resource
 }
 
+// StatusConditions returns a pointer to Status.Conditions slice. This is used
+// by the teleport resource controller to report conditions back to on resource.
 func (l *TeleportAccessList) StatusConditions() *[]metav1.Condition {
 	return &l.Status.Conditions
 }

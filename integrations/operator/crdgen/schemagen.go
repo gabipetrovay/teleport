@@ -134,6 +134,7 @@ func (generator *SchemaGenerator) addResource(file *File, name string, opts ...r
 			}
 		}
 	} else {
+		// We check both "Spec" with a capital S, and "spec" in lower case.
 		specField, ok := rootMsg.GetField("Spec")
 		if !ok {
 			specField, ok = rootMsg.GetField("spec")
