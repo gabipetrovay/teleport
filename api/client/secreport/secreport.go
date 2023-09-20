@@ -114,9 +114,11 @@ func (c *Client) ListSecurityReports(ctx context.Context, pageSize int, token st
 	return reports, resp.GetNextPageToken(), nil
 }
 
-func (c *Client) GetSecurityReportState(ctx context.Context, name string) (*secreports.ReportState, error) {
+// GetSecurityReportExecutionState returns the execution state of the report.
+func (c *Client) GetSecurityReportExecutionState(ctx context.Context, name string, days int32) (*secreports.ReportState, error) {
 	resp, err := c.grpcClient.GetReportState(ctx, &pb.GetReportStateRequest{
 		Name: name,
+		Days: uint32(days),
 	})
 	if err != nil {
 		return nil, trail.FromGRPC(err)

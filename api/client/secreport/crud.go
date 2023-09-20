@@ -149,3 +149,7 @@ func (c *Client) DeleteAllSecurityReports(ctx context.Context) error {
 func (c *Client) DeleteAllSecurityAuditQueries(ctx context.Context) error {
 	return trace.NotImplemented("DeleteAllSecurityAuditQueries is not supported in the gRPC client")
 }
+
+func (c *Client) GetSecurityReportState(ctx context.Context, name string) (*secreports.ReportState, error) {
+	return nil, trace.NotImplemented("GetSecurityReportState is not supported in the gRPC client")
+}
