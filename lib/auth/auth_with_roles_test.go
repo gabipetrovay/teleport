@@ -4254,10 +4254,7 @@ func TestListUnifiedResources_WithPinnedResources(t *testing.T) {
 	require.Len(t, resp.Resources, 1)
 	require.Empty(t, resp.NextKey)
 	// Check that our returned resource is the pinned resource
-	for _, resource := range resp.Resources {
-		r := resource.GetNode()
-		require.Contains(t, r.GetHostname(), "tifa")
-	}
+	require.Equal(t, "tifa", resp.Resources[0].GetNode().GetHostname())
 }
 
 // TestListUnifiedResources_WithSearch will generate multiple resources

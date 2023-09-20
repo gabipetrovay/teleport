@@ -1628,7 +1628,6 @@ func (a *ServerWithRoles) ListUnifiedResources(ctx context.Context, req *proto.L
 
 	startFetch := time.Now()
 	if req.PinnedResourcesOnly {
-		var ids []string
 		clusterName, err := a.authServer.GetClusterName()
 		if err != nil {
 			return nil, trace.Wrap(err, "getting cluster name")
@@ -1641,13 +1640,9 @@ func (a *ServerWithRoles) ListUnifiedResources(ctx context.Context, req *proto.L
 		clusters := prefs.PinnedResources.GetPinnedResources()
 		clusterIDs, ok := clusters[clusterName.GetClusterName()]
 		if !ok {
-			return &proto.ListUnifiedResourcesResponse{
-				NextKey:   "",
-				Resources: nil,
-			}, nil
+			return &proto.ListUnifiedResourcesResponse{}, nil
 		}
-		ids = clusterIDs.ResourceIds
-		resp, err := a.authServer.UnifiedResourceCache.GetUnifiedResourcesByIDs(ctx, ids)
+		resp, err := a.authServer.UnifiedResourceCache.GetUnifiedResourcesByIDs(ctx, clusterIDs.ResourceIds)
 		if err != nil {
 			return nil, trace.Wrap(err, "getting unified resources by ID")
 		}
