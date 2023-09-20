@@ -38,7 +38,7 @@ import (
 var accessListSpec = accesslist.Spec{
 	Title:       "crane operation",
 	Description: "Access list that Gru uses to allow the minions to operate the crane.",
-	Owners:      []accesslist.Owner{{"Gru", "The super villain."}},
+	Owners:      []accesslist.Owner{{Name: "Gru", Description: "The super villain."}},
 	Audit: accesslist.Audit{
 		Frequency:     14 * 24 * time.Hour,
 		NextAuditDate: time.Now().Add(24 * time.Hour),
