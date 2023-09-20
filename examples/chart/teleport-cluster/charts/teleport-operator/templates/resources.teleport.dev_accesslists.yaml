@@ -68,16 +68,13 @@ spec:
                     nullable: true
                     type: array
                   traits:
+                    additionalProperties:
+                      items:
+                        type: string
+                      type: array
                     description: traits are the traits that are granted to users who
                       are members of the access list.
-                    items:
-                      additionalProperties:
-                        items:
-                          type: string
-                        type: array
-                      type: object
-                    nullable: true
-                    type: array
+                    type: object
                 type: object
               members:
                 description: 'members describes the current members of the access
@@ -122,16 +119,13 @@ spec:
                     nullable: true
                     type: array
                   traits:
+                    additionalProperties:
+                      items:
+                        type: string
+                      type: array
                     description: traits are the traits that must be present for the
                       user to obtain access.
-                    items:
-                      additionalProperties:
-                        items:
-                          type: string
-                        type: array
-                      type: object
-                    nullable: true
-                    type: array
+                    type: object
                 type: object
               owners:
                 description: owners is a list of owners of the access list.
@@ -162,16 +156,13 @@ spec:
                     nullable: true
                     type: array
                   traits:
+                    additionalProperties:
+                      items:
+                        type: string
+                      type: array
                     description: traits are the traits that must be present for the
                       user to obtain access.
-                    items:
-                      additionalProperties:
-                        items:
-                          type: string
-                        type: array
-                      type: object
-                    nullable: true
-                    type: array
+                    type: object
                 type: object
               title:
                 description: title is a plaintext short description of the access
