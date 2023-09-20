@@ -62,7 +62,7 @@ type TeleportAccessListList struct {
 }
 
 // ToTeleport returns a AccessListResource, which wraps the actual
-// [loginrulepb.AccessList] and implements the necessary interface methods used
+// [accesslist.AccessList] and implements the necessary interface methods used
 // by the TeleportResourceReconciler.
 func (l TeleportAccessList) ToTeleport() *accesslist.AccessList {
 	resource := &accesslist.AccessList{
