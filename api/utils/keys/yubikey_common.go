@@ -32,21 +32,6 @@ func GetYubiKeyPrivateKey(ctx context.Context, policy PrivateKeyPolicy, slot str
 	return priv, nil
 }
 
-// TODO(Joerger): Deprecated in favor of GetYubiKeyPrivateKey.
-// Delete once all references in /e are removed
-func GetOrGenerateYubiKeyPrivateKey(touchRequired bool) (*PrivateKey, error) {
-	policy := PrivateKeyPolicyHardwareKey
-	if touchRequired {
-		policy = PrivateKeyPolicyHardwareKeyTouch
-	}
-
-	priv, err := getOrGenerateYubiKeyPrivateKey(context.TODO(), policy, "")
-	if err != nil {
-		return nil, trace.Wrap(err, "failed to get a YubiKey private key")
-	}
-	return priv, nil
-}
-
 // ValidatePIVSlotKey validates the given piv slot key.
 func ValidatePIVSlotKey(slotKeyString string) error {
 	return trace.Wrap(validatePIVSlotKey(slotKeyString))
