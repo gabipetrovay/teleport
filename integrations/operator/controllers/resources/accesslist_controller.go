@@ -16,7 +16,7 @@ type accessListClient struct {
 	TeleportClientAccessor sidecar.ClientAccessor
 }
 
-// Get gets the Teleport github_connector of a given name
+// Get gets the Teleport access_list of a given name
 func (r accessListClient) Get(ctx context.Context, name string) (*accesslist.AccessList, error) {
 	teleportClient, err := r.TeleportClientAccessor(ctx)
 	if err != nil {
@@ -27,7 +27,7 @@ func (r accessListClient) Get(ctx context.Context, name string) (*accesslist.Acc
 	return accessList, trace.Wrap(err)
 }
 
-// Create creates a Teleport github_connector
+// Create creates a Teleport access_list
 func (r accessListClient) Create(ctx context.Context, accessList *accesslist.AccessList) error {
 	teleportClient, err := r.TeleportClientAccessor(ctx)
 	if err != nil {
@@ -37,7 +37,7 @@ func (r accessListClient) Create(ctx context.Context, accessList *accesslist.Acc
 	return trace.Wrap(err)
 }
 
-// Update updates a Teleport github_connector
+// Update updates a Teleport access_list
 func (r accessListClient) Update(ctx context.Context, accessList *accesslist.AccessList) error {
 	teleportClient, err := r.TeleportClientAccessor(ctx)
 	if err != nil {
@@ -48,7 +48,7 @@ func (r accessListClient) Update(ctx context.Context, accessList *accesslist.Acc
 	return trace.Wrap(err)
 }
 
-// Delete deletes a Teleport github_connector
+// Delete deletes a Teleport access_list
 func (r accessListClient) Delete(ctx context.Context, name string) error {
 	teleportClient, err := r.TeleportClientAccessor(ctx)
 	if err != nil {
@@ -58,7 +58,7 @@ func (r accessListClient) Delete(ctx context.Context, name string) error {
 	return trace.Wrap(teleportClient.AccessListClient().DeleteAccessList(ctx, name))
 }
 
-// NewAccessListReconciler instantiates a new Kubernetes controller reconciling github_connector resources
+// NewAccessListReconciler instantiates a new Kubernetes controller reconciling access_list resources
 func NewAccessListReconciler(client kclient.Client, accessor sidecar.ClientAccessor) *TeleportResourceReconciler[*accesslist.AccessList, *resourcesv1.TeleportAccessList] {
 	accessListClient := &accessListClient{
 		TeleportClientAccessor: accessor,
