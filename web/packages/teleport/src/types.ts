@@ -60,6 +60,7 @@ export enum NavTitle {
   NewRequest = 'New Request',
   ReviewRequests = 'Review Requests',
   AccessLists = 'Access Lists',
+  AccessMonitoring = 'Access Monitoring',
 
   // Activity
   SessionRecordings = 'Session Recordings',
