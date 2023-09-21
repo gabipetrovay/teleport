@@ -5,7 +5,7 @@ h1: Running Teleport Enterprise in High Availability mode on AWS
 tocDepth: 3
 ---
 
-This guide is designed to accompany our [reference Terraform code](https://github.com/gravitational/teleport/tree/branch/v(=teleport.major_version=)/examples/aws/terraform/ha-autoscale-cluster#terraform-based-provisioning-example-amazon-single-ami)
+This guide is designed to accompany our [reference ha-autoscale-cluster Terraform code](https://github.com/gravitational/teleport/tree/branch/v(=teleport.major_version=)/examples/aws/terraform/ha-autoscale-cluster#terraform-based-provisioning-example-amazon-single-ami)
 and describe how to manage the resulting Teleport deployment.
 
 (!docs/pages/includes/cloud/call-to-action.mdx!)
@@ -407,7 +407,7 @@ In our example this would be `s3://teleport-example/records`
 ### Cluster domain
 
 The reference Terraform deployment sets the Teleport cluster up to be available on a domain defined in Route 53, referenced
-by the [`route53_domain`](#route53\_domain) variable. In our example this would be `<Var name="teleport.example.com" />`
+by the [`route53_domain`](#route53\_domain) variable. In our example this would be `teleport.example.com`.
 
 Teleport's web interface will be available on port 443 - [https://teleport.example.com](https://teleport.example.com) - this is via a configured CNAME
 to the AWS load balancer.
@@ -611,7 +611,7 @@ You can use the Teleport command line tool (`tsh`) to log into your Teleport clu
 
 You can [download the Teleport package containing the `tsh` client from here](https://goteleport.com/download)
 
-- the client is the same for both OSS and Enterprise versions of Teleport.
+- The client is the same for both OSS and Enterprise versions of Teleport.
 
 <Tabs>
   <TabItem scope={["oss"]} label="Teleport Community Edition">
@@ -704,6 +704,32 @@ You can run `tctl` commands on **any** of the auth instances connected to your c
 The `systemd` service name for the proxy is different between Let's Encrypt (`teleport-proxy.service`) and ACM (`teleport-proxy-acm.service`).
 
 <Tabs>
+  <TabItem label="If using ACM">
+
+  <Admonition type="note">
+    You are using ACM if your `use_acm` variable is set to `"true"`.
+  </Admonition>
+
+  ```code
+  $ systemctl status teleport-proxy-acm.service
+  # ● teleport-proxy-acm.service - Teleport Proxy Service (ACM)
+  #   Loaded: loaded (/etc/systemd/system/teleport-proxy-acm.service; enabled; vendor preset: disabled)
+  #    Active: active (running) since Thu 2020-03-05 17:14:37 UTC; 3h 47min ago
+  #  Process: 4502 ExecStartPre=/usr/bin/teleport-ssm-get-token (code=exited, status=0/SUCCESS)
+  # Main PID: 4514 (teleport)
+  #   CGroup: /system.slice/teleport-proxy-acm.service
+  #           └─4514 /usr/bin/teleport start --config=/etc/teleport.yaml --diag-addr=127.0.0.1:3000 --pid-file=/run/teleport/teleport.pid
+
+  # Mar 05 20:58:25 ip-172-31-2-109.ec2.internal /usr/bin/teleport[4514]: ERRO             read tcp 172.31.2.109:3024->172.31.2.143:1577: read: connection reset by peer
+  # Mar 05 20:58:50 ip-172-31-2-109.ec2.internal /usr/bin/teleport[4514]: ERRO             read tcp 172.31.2.109:3023->172.31.2.143:38011: read: connection reset by peer
+  ```
+
+  You can get detailed logs for the Teleport Proxy Service using the `journalctl` command:
+
+  ```code
+  $ journalctl -u teleport-proxy-acm.service
+  ```
+  </TabItem>
   <TabItem label="If using Let's Encrypt">
 
   <Admonition type="note">
@@ -730,33 +756,6 @@ The `systemd` service name for the proxy is different between Let's Encrypt (`te
   $ journalctl -u teleport-proxy.service
   ```
 
-
-  </TabItem>
-  <TabItem label="If using ACM">
-
-  <Admonition type="note">
-    You are using ACM if your `use_acm` variable is set to `"true"`.
-  </Admonition>
-
-  ```code
-  $ systemctl status teleport-proxy-acm.service
-  # ● teleport-proxy-acm.service - Teleport Proxy Service (ACM)
-  #   Loaded: loaded (/etc/systemd/system/teleport-proxy-acm.service; enabled; vendor preset: disabled)
-  #    Active: active (running) since Thu 2020-03-05 17:14:37 UTC; 3h 47min ago
-  #  Process: 4502 ExecStartPre=/usr/bin/teleport-ssm-get-token (code=exited, status=0/SUCCESS)
-  # Main PID: 4514 (teleport)
-  #   CGroup: /system.slice/teleport-proxy-acm.service
-  #           └─4514 /usr/bin/teleport start --config=/etc/teleport.yaml --diag-addr=127.0.0.1:3000 --pid-file=/run/teleport/teleport.pid
-
-  # Mar 05 20:58:25 ip-172-31-2-109.ec2.internal /usr/bin/teleport[4514]: ERRO             read tcp 172.31.2.109:3024->172.31.2.143:1577: read: connection reset by peer
-  # Mar 05 20:58:50 ip-172-31-2-109.ec2.internal /usr/bin/teleport[4514]: ERRO             read tcp 172.31.2.109:3023->172.31.2.143:38011: read: connection reset by peer
-  ```
-
-  You can get detailed logs for the Teleport Proxy Service using the `journalctl` command:
-
-  ```code
-  $ journalctl -u teleport-proxy-acm.service
-  ```
   </TabItem>
 </Tabs>
 
@@ -792,6 +791,8 @@ $ journalctl -u teleport-node.service
 
 ## Adding agents to your Teleport cluster
 
+The easiest way to quickly join new resources to your cluster is to use the "Enroll New Resource" wizards in the Teleport web UI.
+
 Customers run many workloads within AWS and depending on how you work, there are many
 ways to integrate Teleport onto your servers. We recommend looking at our [Installation guide](../../installation.mdx).
 
@@ -817,7 +818,7 @@ You can also generate a Node join token using `tctl tokens add --type=node` [as 
 
 ### Joining Nodes to the cluster
 
-The easiest way to quickly join nodes to your cluster is to use the "Enroll New Resource" wizard in the Teleport web UI.
+As mentioned above, the easiest way to quickly join new resources to your cluster is to use the "Enroll New Resource" wizards in the Teleport web UI.
 
 To manually join Teleport Nodes to your cluster, you will need [a node join token](../../agents/join-services-to-your-cluster/join-token.mdx).
 
