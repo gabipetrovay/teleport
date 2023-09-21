@@ -161,8 +161,13 @@
           "forScopes": ["oss", "enterprise"],
           "entries": [
             {
-              "title": "AWS Terraform",
-              "slug": "/deploy-a-cluster/deployments/aws-terraform/",
+              "title": "AWS HA Terraform",
+              "slug": "/deploy-a-cluster/deployments/aws-ha-autoscale-cluster-terraform/",
+              "forScopes": ["oss", "enterprise"]
+            },
+            {
+              "title": "AWS Single Instance Terraform",
+              "slug": "/deploy-a-cluster/deployments/aws-starter-cluster-terraform/",
               "forScopes": ["oss", "enterprise"]
             },
             {
@@ -892,7 +897,7 @@
         {
           "title": "Troubleshooting Application Access",
           "slug": "/application-access/troubleshooting-apps/"
-        },           
+        },
         {
           "title": "Reference",
           "slug": "/application-access/reference/"
@@ -1810,7 +1815,12 @@
     },
     {
       "source": "/aws-terraform-guide/",
-      "destination": "/deploy-a-cluster/deployments/aws-terraform/",
+      "destination": "/deploy-a-cluster/deployments/aws-ha-autoscale-cluster-terraform/",
+      "permanent": true
+    },
+    {
+      "source": "/aws-terraform/",
+      "destination": "/deploy-a-cluster/deployments/aws-ha-autoscale-cluster-terraform/",
       "permanent": true
     },
     {
@@ -2145,7 +2155,7 @@
     },
     {
       "source": "/setup/deployments/aws-terraform/",
-      "destination": "/deploy-a-cluster/deployments/aws-terraform/",
+      "destination": "/deploy-a-cluster/deployments/aws-ha-autoscale-cluster-terraform/",
       "permanent": true
     },
     {
