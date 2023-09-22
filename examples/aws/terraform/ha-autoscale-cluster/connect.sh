@@ -17,22 +17,28 @@ else
     INSTANCE_ID="0"
 fi
 
+# shellcheck disable=SC2155
 export BASTION_IP=$(terraform output -raw bastion_ip_public)
 echo "Bastion IP: ${BASTION_IP?}"
+# shellcheck disable=SC2155
 export CLUSTER_NAME=$(terraform output -raw cluster_name)
 echo "Cluster name: ${CLUSTER_NAME?}"
 
 if [[ "${INSTANCE_TYPE?}" == "auth" ]]; then
+    # shellcheck disable=SC2155
     export SERVER_IP=$(aws ec2 describe-instances --filters "Name=tag:TeleportCluster,Values=${CLUSTER_NAME?}" "Name=tag:TeleportRole,Values=auth" --query "Reservations[${INSTANCE_ID?}].Instances[*].PrivateIpAddress" --output text)
     echo "Auth ${INSTANCE_ID?} IP: ${SERVER_IP?}"
 elif [[ "${INSTANCE_TYPE?}" == "proxy" ]]; then
+    # shellcheck disable=SC2155
     export SERVER_IP=$(aws ec2 describe-instances --filters "Name=tag:TeleportCluster,Values=${CLUSTER_NAME?}" "Name=tag:TeleportRole,Values=proxy" --query "Reservations[${INSTANCE_ID?}].Instances[*].PrivateIpAddress" --output text)
     echo "Proxy ${INSTANCE_ID?} IP: ${SERVER_IP?}"
 elif [[ "${INSTANCE_TYPE?}" == "node" ]]; then
+    # shellcheck disable=SC2155
     export SERVER_IP=$(aws ec2 describe-instances --filters "Name=tag:TeleportCluster,Values=${CLUSTER_NAME?}" "Name=tag:TeleportRole,Values=node" --query "Reservations[*].Instances[*].PrivateIpAddress" --output text)
     echo "Node IP: ${SERVER_IP?}"
 fi
 
 KEYPAIR_NAME=$(terraform output -raw key_name)
 echo "Keypair name: ${KEYPAIR_NAME?}"
+# shellcheck disable=SC2086
 ssh -i ${KEYPAIR_NAME?}.pem -o ProxyCommand="ssh -i ${KEYPAIR_NAME?}.pem -W '[%h]:%p' ec2-user@${BASTION_IP?}" ec2-user@${SERVER_IP?}
