@@ -144,7 +144,7 @@ type EtcdBackend struct {
 	nodes []string
 	*log.Entry
 	cfg         *Config
-	clients     roundRobin[*clientv3.Client]
+	clients     *utils.RoundRobin[*clientv3.Client]
 	cancelC     chan bool
 	stopC       chan bool
 	clock       clockwork.Clock
@@ -271,7 +271,6 @@ func New(ctx context.Context, params backend.Params, opts ...Option) (*EtcdBacke
 	b := &EtcdBackend{
 		Entry:       log.WithFields(log.Fields{trace.Component: GetName()}),
 		cfg:         cfg,
-		clients:     newRoundRobin[*clientv3.Client](nil), // initialized below in reconnect()
 		nodes:       cfg.Nodes,
 		cancelC:     make(chan bool, 1),
 		stopC:       make(chan bool, 1),
@@ -365,8 +364,10 @@ func (b *EtcdBackend) Close() error {
 	b.cancel()
 	b.buf.Close()
 	var errs []error
-	for _, clt := range b.clients.items {
-		errs = append(errs, clt.Close())
+	if b.clients != nil {
+		b.clients.ForEach(func(clt *clientv3.Client) {
+			errs = append(errs, clt.Close())
+		})
 	}
 	return trace.NewAggregate(errs...)
 }
@@ -378,12 +379,15 @@ func (b *EtcdBackend) CloseWatchers() {
 }
 
 func (b *EtcdBackend) reconnect(ctx context.Context) error {
-	for _, clt := range b.clients.items {
-		if err := clt.Close(); err != nil {
-			b.Entry.WithError(err).Warning("Failed closing existing etcd client on reconnect.")
-		}
+	if b.clients != nil {
+		b.clients.ForEach(func(clt *clientv3.Client) {
+			if err := clt.Close(); err != nil {
+				b.Entry.WithError(err).Warning("Failed closing existing etcd client on reconnect.")
+			}
+		})
+
+		b.clients = nil
 	}
-	b.clients.items = nil
 
 	tlsConfig := utils.TLSConfig(nil)
 
@@ -422,6 +426,7 @@ func (b *EtcdBackend) reconnect(ctx context.Context) error {
 		tlsConfig.ClientCAs = certPool
 	}
 
+	var clients []*clientv3.Client
 	for i := 0; i < b.cfg.ClientPoolSize; i++ {
 		clt, err := clientv3.New(clientv3.Config{
 			Endpoints:          b.nodes,
@@ -437,8 +442,10 @@ func (b *EtcdBackend) reconnect(ctx context.Context) error {
 			}
 			return trace.Wrap(err)
 		}
-		b.clients.items = append(b.clients.items, clt)
+		clients = append(clients, clt)
 	}
+
+	b.clients = utils.NewRoundRobin(clients)
 	return nil
 }
 
