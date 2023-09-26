@@ -2,75 +2,72 @@
 authors: Mike Jensen (mike.jensen@goteleport.com)
 state: draft
 ---
- 
-# RFD 144 - Automatic Repo Mirroring
- 
-## What
- 
-This RFD describes how we can sync a repo continuously and in an automatic way.  This can be used to provide private copies of a repo.
- 
-## Why
- 
-We currently face a few frictions which could be addressed through a more robust repo sync mechanism:
-1. Our internal `teleport-private` mirror of `teleport` used for security development must be manually updated
-2. Some tooling (Dependabot) does not allow scanning for non-default branches, necessitating manual efforts to manage our release branches
-3. Because much of the CI and scanning configuration is committed into the repo, we face noise from duplicate alerts when we use a repo for testing or as an internal mirror / fork
 
-Although the above are our immediate needs, the goal of this RFD is to produce a generic pattern for mirroring repo's such that we can also be flexible to future needs when we need to sync any upstream repo to a fork or mirror we maintain.
- 
+# RFD 144 - Automatic Repo Mirroring
+
+## What
+
+This RFD outlines a method for continuously and automatically syncing a GitHub repository. This can be used to create private copies of a repository.
+
+## Why
+
+We currently face a few frictions which could be addressed through a more robust repository sync mechanism:
+1. Our internal `teleport-private` mirror of `teleport`, used for security development, currently requires manual updates to sync.
+2. Certain tools, like Dependabot, don't support scanning non-default branches, necessitating manual efforts to manage our release branches.
+3. Due to the committing of CI and scanning configurations in the repository, we receive duplicate alerts when using a repository for testing or as an internal mirror/fork.
+
+While addressing these immediate needs, the aim of this RFD is to establish a generic pattern for repository mirroring. This will provide flexibility for future requirements when syncing any upstream repository to a fork or mirror that we maintain.
+
 ## Details
- 
-As such we need a solution that can provide the following:
-* Automatic and regular updates to a repo to ensure it's in sync
-* The ability to apply changes in addition to the upstream repo (for example disable Actions that we don't want running on the repo mirror, or enable additional scanning / actions)
- 
+
+The core requirements of this solution are:
+* Automatic and regular updates to a repository to ensure is's state matches the upstream.
+* The ability to make additional changes to the mirror repository, separate from the upstream repository (e.g., disabling actions we don't want to run on the mirror, or enabling additional scanning/actions).
+
 ### Branch Structure
- 
-* `master` (configurable) - This will be the repos default branch.  This branch will contain the upstream history in addition to commits needed for the sync process or other custom changes on the repo mirror
-* `sync/upstream-[UPSTREAM_BRANCH_NAME]` - This branch will be an exact copy of the upstream branch.  If there is a need to create a PR in this repo the history should be based off this rather than `master`
-* `sync/rebase` - This branch is where our custom changes will be committed.  It will be rebased on to the upstream changes before being committed into `master`
- 
+
+* `master` (configurable) - This will serve as the repository's default branch. It will contain both the upstream history and any commits necessary for the synchronization process or other custom changes made to the mirror repository.
+* `sync/upstream-[UPSTREAM_BRANCH_NAME]` - This branch will be an exact copy of the upstream branch. Should there be a need to create a PR in this repository, the history should be based on this branch, not on `master`.
+* `sync/rebase` - This is the branch where custom changes will be committed. It will be rebased onto the upstream changes before being merged into master.
+
 #### Branch Protections
- 
-The only branch that will be protected is the `sync/rebase` branch.  Other branches are expected to allow force pushes so they can be forcefully synced based off the upstream state.
- 
+
+The only protected branch will be `sync/rebase`. Other branches will allow force pushes to enable forceful synchronization based on the upstream state.
+
 ### High Level Implementation
- 
-At a high level there are two primary components to this implementation:
-1. A GitHub action which will be scheduled as well as triggered on changes to the `sync/rebase` branch.  This action will perform the actual rebase action and commit the results to the respective branches above.
-2. A script that is invoked when the rebase can not be applied cleanly.  This can allow some custom rebase logic as a means to reduce how often the `sync/rebase` branch needs to be manually updated to avoid rebase conflicts.  A simple example is that workflow automations not desired in the repo mirror may be removed in the `sync/rebase` branch.  That means that any changes to those committed workflows would result in a conflict.  However it can be safely resolved that any modified files removed in the `sync/rebase` branch can be resolved by simply removing.
- 
-At a high level the action will do the following steps:
-1. Setup auth and any necessary repo specific configuration
-2. Checkout the latest upstream contents
-3. Fetch our custom changes
-4. Push the exact copy branches `sync/upstream-[UPSTREAM_BRANCH_NAME]` to our mirror
-5. Rebase our `sync/rebase` branch on to the latest upstream changes, using the script for resolutions if necessary and possible
-6. Force push the rebased changes to the `master` branch on our repo copy (configurable to whatever branch name makes the most sense for the repo)
+
+The implementation has two primary components:
+1. A GitHub Action, scheduled and also triggered by changes to the `sync/rebase` branch. This workflow will handle the rebase operation and commit the results to the appropriate branches (described above).
+2. A script invoked when the rebase cannot be applied cleanly. This will enable custom rebase logic, reducing the frequency with which the `sync/rebase` branch needs manual updates to avoid rebase conflicts. A simple example is that workflow automations not desired in the mirror repository might be removed in the `sync/rebase` branch. Any modifications to these workflows would then cause a conflict that can be resolved by simply removing the files. This logic can be changed to meet the specific needs of the repository.
+
+At a high level the action will execute the following steps:
+1. Set up authentication and any repository-specific configurations.
+2. Check out the latest upstream contents.
+3. Fetch our custom changes.
+4. Push the exact copy branches `sync/upstream-[UPSTREAM_BRANCH_NAME]` to our mirror.
+5. Rebase our `sync/rebase` branch onto the latest upstream changes, using the script for conflict resolutions when necessary and possible.
+6. Force-push the rebased changes to the default branch of our repository mirror
 
 ### Specific Implementation Details
 
 #### teleport-private
 
-The only deviation needed for `teleport-private` is that there will be more than one `sync/upstream` branch we want to maintain.  We will also be syncing all the release branches.  This will be useful for when we need to produce backport PRs.
-
-Despite syncing multiple branches, only the `master` branch will be rebased.  This is because we only need to rebase in order to adopt the GitHub Actions / Workflow automation changes needed for the syncing.
+The only custom changes required for `teleport-private` is the need to maintain multiple `sync/upstream` branches. Specifically, we will sync all release branches. This will be useful when producing backport PRs. Despite syncing multiple upstream branches, only the `master` branch will undergo rebasing (as generally documented above). The rebase is necessary only to incorporate changes related to GitHub Actions and Workflow automations required for syncing.
 
 #### Teleport Security Scanning
- 
-This tooling will be leveraged to address the gaps in our release branch scanning by doing the following:
-1. Create 3 repos (1 for each supported version): `teleport-sec_scan-1`, `teleport-sec_scan-2`, `teleport-sec_scan-3`, `teleport-sec_scan-4`.  `1` will reference our latest release branch (determined from automation), with each subsequent version inspecting a consecutively older version.
-2. Setup the sync automation as documented above
-3. Adjust Dependabot configuration to only notify for security updates on these branches
-4. Adjust CodeQL Configuration to scan on these branches rather than trying to capture all branch coverage within just `teleport`
- 
-Step 4 is an optional addition, but since Dependabot results will be located here, it seems to co-locate other security reporting to these branches too.  This will also reduce the "Fixed" and "Reopened" flapping that can occur when changes are seen inconsistently between `master` and the release branches.
 
-It's important that we minimize the amount of manual steps needed to maintain this process.  Because of that we want to automate the detection of what our current release branch is.  One challenge is that as soon as the next version is created all repos will be updated.  For this reason we have a fourth repo, that way ensure that current supported versions are always covered.
+This tooling will leveraged to address gaps in our release branch scanning in the following manner:
+1. Create four repositories, one for each supported version (and one extra described below): `teleport-sec_scan-1`, `teleport-sec_scan-2`, `teleport-sec_scan-3`, and `teleport-sec_scan-4`. The 1 will refer to our latest release branch, determined by automation, with each subsequent repository covering a consecutively older version.
+2. Set up sync automation as documented above.
+3. Modify the Dependabot configuration to provide notifications only for security updates on these branches.
+4. Disable any unecessary workflows.
+5. Adjust the CodeQL configuration to focus scanning on these branches. This would centralize security reporting and minimize inconsistencies between master and the release branches, thereby reducing the frequency of `Fixed` and `Reopened` status changes.
+
+It is important to minimize manual intervention in maintaining this process. Therefore, automating the detection of the current release branch is essential. One challenge is that all repositories will be updated as soon as the next version is created. To ensure constant coverage of supported versions, we maintain a fourth repository.
 
 ### `teleport-private` Developer Experience
 
-Very little will need to change with regards to how we develop within `teleport-private`.  Here are the highlights:
-* The most notable change is that you now need to base your branch from one of the `sync/upstream-[UPSTREAM_BRANCH_NAME]`.  Typically this will be `sync/upstream-master`, but the release branches will also be synced for the production of backport PRs.
-* There will be no need to request a manual update of the repo.  Instead you can start developing when you're ready and know you're basing from a recent history
+The development experience within `teleport-private` will largely remain the same, with a few key highlights:
+* The most significant change is the requirement to base your branch on one of the `sync/upstream-[UPSTREAM_BRANCH_NAME]` branches. Typically, you will use `sync/upstream-master`, but release branches will also be available for creating backport PRs.
+* Manual updates of the repository will be unnecessary. You can start developing whenever you're ready, confident that you're working from an up-to-date branch.
 
