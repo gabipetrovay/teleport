@@ -17,11 +17,13 @@
 import cfg from 'teleport/config';
 import api from 'teleport/services/api';
 
-import { ThemePreference } from 'teleport/services/userPreferences/types';
 import { ViewMode } from 'teleport/Assist/types';
+import { ThemePreference } from 'teleport/services/userPreferences/types';
 
 import type {
+  GetUserClusterPreferencesResponse,
   GetUserPreferencesResponse,
+  UserClusterPreferences,
   UserPreferences,
 } from 'teleport/services/userPreferences/types';
 
@@ -31,6 +33,21 @@ export async function getUserPreferences() {
   );
 
   return res;
+}
+
+export async function getUserClusterPreferences(clusterId: string) {
+  const res: GetUserClusterPreferencesResponse = await api.get(
+    cfg.getUserClusterPreferencesUrl(clusterId)
+  );
+
+  return res;
+}
+
+export function updateUserClusterPreferences(
+  clusterId: string,
+  preferences: Partial<UserPreferences>
+) {
+  return api.put(cfg.getUserClusterPreferencesUrl(clusterId), preferences);
 }
 
 export function updateUserPreferences(preferences: Partial<UserPreferences>) {
@@ -46,7 +63,19 @@ export function makeDefaultUserPreferences(): UserPreferences {
     },
     onboard: {
       preferredResources: [],
+      marketingParams: {
+        campaign: '',
+        source: '',
+        medium: '',
+        intent: '',
+      },
     },
-    pinnedResources: {},
+    clusterPreferences: makeDefaultUserClusterPreferences(),
+  };
+}
+
+export function makeDefaultUserClusterPreferences(): UserClusterPreferences {
+  return {
+    pinnedResources: [],
   };
 }

@@ -43,17 +43,12 @@ func newUserPreferencesService(t *testing.T) *local.UserPreferencesService {
 	return local.NewUserPreferencesService(backend)
 }
 
-func TestUserPreferencesCRUD2(t *testing.T) {
+func TestUserPreferencesCRUD(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	defaultPref := local.DefaultUserPreferences()
 	username := "something"
-	pinned := &userpreferencesv1.PinnedResourcesUserPreferences{
-		PinnedResources: map[string]*userpreferencesv1.ClusterPinnedResources{
-			"cluster1": {ResourceIds: []string{"node1", "node2"}},
-		},
-	}
 
 	tests := []struct {
 		name     string
@@ -73,10 +68,10 @@ func TestUserPreferencesCRUD2(t *testing.T) {
 				},
 			},
 			expected: &userpreferencesv1.UserPreferences{
-				Assist:          defaultPref.Assist,
-				Onboard:         defaultPref.Onboard,
-				Theme:           userpreferencesv1.Theme_THEME_DARK,
-				PinnedResources: defaultPref.PinnedResources,
+				Assist:             defaultPref.Assist,
+				Onboard:            defaultPref.Onboard,
+				Theme:              userpreferencesv1.Theme_THEME_DARK,
+				ClusterPreferences: defaultPref.ClusterPreferences,
 			},
 		},
 		{
@@ -88,6 +83,7 @@ func TestUserPreferencesCRUD2(t *testing.T) {
 					},
 					Onboard: &userpreferencesv1.OnboardUserPreferences{
 						PreferredResources: []userpreferencesv1.Resource{},
+						MarketingParams:    &userpreferencesv1.MarketingParams{},
 					},
 				},
 			},
@@ -98,7 +94,7 @@ func TestUserPreferencesCRUD2(t *testing.T) {
 					PreferredLogins: []string{"foo", "bar"},
 					ViewMode:        defaultPref.Assist.ViewMode,
 				},
-				PinnedResources: defaultPref.PinnedResources,
+				ClusterPreferences: defaultPref.ClusterPreferences,
 			},
 		},
 		{
@@ -117,7 +113,7 @@ func TestUserPreferencesCRUD2(t *testing.T) {
 					PreferredLogins: defaultPref.Assist.PreferredLogins,
 					ViewMode:        userpreferencesv1.AssistViewMode_ASSIST_VIEW_MODE_POPUP_EXPANDED_SIDEBAR_VISIBLE,
 				},
-				PinnedResources: defaultPref.PinnedResources,
+				ClusterPreferences: defaultPref.ClusterPreferences,
 			},
 		},
 		{
@@ -126,6 +122,12 @@ func TestUserPreferencesCRUD2(t *testing.T) {
 				Preferences: &userpreferencesv1.UserPreferences{
 					Onboard: &userpreferencesv1.OnboardUserPreferences{
 						PreferredResources: []userpreferencesv1.Resource{userpreferencesv1.Resource_RESOURCE_DATABASES},
+						MarketingParams: &userpreferencesv1.MarketingParams{
+							Campaign: "c_1",
+							Source:   "s_1",
+							Medium:   "m_1",
+							Intent:   "i_1",
+						},
 					},
 				},
 			},
@@ -134,22 +136,36 @@ func TestUserPreferencesCRUD2(t *testing.T) {
 				Theme:  defaultPref.Theme,
 				Onboard: &userpreferencesv1.OnboardUserPreferences{
 					PreferredResources: []userpreferencesv1.Resource{userpreferencesv1.Resource_RESOURCE_DATABASES},
+					MarketingParams: &userpreferencesv1.MarketingParams{
+						Campaign: "c_1",
+						Source:   "s_1",
+						Medium:   "m_1",
+						Intent:   "i_1",
+					},
 				},
-				PinnedResources: defaultPref.PinnedResources,
+				ClusterPreferences: defaultPref.ClusterPreferences,
 			},
 		},
 		{
-			name: "update pinned resources preference only",
+			name: "update cluster preference only",
 			req: &userpreferencesv1.UpsertUserPreferencesRequest{
 				Preferences: &userpreferencesv1.UserPreferences{
-					PinnedResources: pinned,
+					ClusterPreferences: &userpreferencesv1.ClusterUserPreferences{
+						PinnedResources: &userpreferencesv1.PinnedResourcesUserPreferences{
+							ResourceIds: []string{"node1", "node2"},
+						},
+					},
 				},
 			},
 			expected: &userpreferencesv1.UserPreferences{
-				Assist:          defaultPref.Assist,
-				Theme:           defaultPref.Theme,
-				Onboard:         defaultPref.Onboard,
-				PinnedResources: pinned,
+				Assist:  defaultPref.Assist,
+				Theme:   defaultPref.Theme,
+				Onboard: defaultPref.Onboard,
+				ClusterPreferences: &userpreferencesv1.ClusterUserPreferences{
+					PinnedResources: &userpreferencesv1.PinnedResourcesUserPreferences{
+						ResourceIds: []string{"node1", "node2"},
+					},
+				},
 			},
 		},
 		{
@@ -163,8 +179,18 @@ func TestUserPreferencesCRUD2(t *testing.T) {
 					},
 					Onboard: &userpreferencesv1.OnboardUserPreferences{
 						PreferredResources: []userpreferencesv1.Resource{userpreferencesv1.Resource_RESOURCE_KUBERNETES},
+						MarketingParams: &userpreferencesv1.MarketingParams{
+							Campaign: "c_2",
+							Source:   "s_2",
+							Medium:   "m_2",
+							Intent:   "i_2",
+						},
 					},
-					PinnedResources: pinned,
+					ClusterPreferences: &userpreferencesv1.ClusterUserPreferences{
+						PinnedResources: &userpreferencesv1.PinnedResourcesUserPreferences{
+							ResourceIds: []string{"node1", "node2"},
+						},
+					},
 				},
 			},
 			expected: &userpreferencesv1.UserPreferences{
@@ -175,8 +201,18 @@ func TestUserPreferencesCRUD2(t *testing.T) {
 				},
 				Onboard: &userpreferencesv1.OnboardUserPreferences{
 					PreferredResources: []userpreferencesv1.Resource{userpreferencesv1.Resource_RESOURCE_KUBERNETES},
+					MarketingParams: &userpreferencesv1.MarketingParams{
+						Campaign: "c_2",
+						Source:   "s_2",
+						Medium:   "m_2",
+						Intent:   "i_2",
+					},
 				},
-				PinnedResources: pinned,
+				ClusterPreferences: &userpreferencesv1.ClusterUserPreferences{
+					PinnedResources: &userpreferencesv1.PinnedResourcesUserPreferences{
+						ResourceIds: []string{"node1", "node2"},
+					},
+				},
 			},
 		},
 	}
