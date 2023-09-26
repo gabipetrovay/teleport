@@ -4229,17 +4229,18 @@ func TestListUnifiedResources_WithPinnedResources(t *testing.T) {
 	user, _, err := CreateUserAndRole(srv.Auth(), username, nil, nil)
 	require.NoError(t, err)
 	identity := TestUser(user.GetName())
-	clusterName := srv.ClusterName()
 
 	// pin a resource
 	pinned := &userpreferencesv1.PinnedResourcesUserPreferences{
-		PinnedResources: map[string]*userpreferencesv1.ClusterPinnedResources{
-			clusterName: {ResourceIds: []string{"tifa/node"}},
-		},
+		ResourceIds: []string{"tifa/node"},
 	}
+	clusterPrefs := &userpreferencesv1.ClusterUserPreferences{
+		PinnedResources: pinned,
+	}
+
 	req := &userpreferencesv1.UpsertUserPreferencesRequest{
 		Preferences: &userpreferencesv1.UserPreferences{
-			PinnedResources: pinned,
+			ClusterPreferences: clusterPrefs,
 		},
 	}
 	err = srv.Auth().UpsertUserPreferences(ctx, username, req.Preferences)
