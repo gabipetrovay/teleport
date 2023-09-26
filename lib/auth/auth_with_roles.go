@@ -1628,21 +1628,14 @@ func (a *ServerWithRoles) ListUnifiedResources(ctx context.Context, req *proto.L
 
 	startFetch := time.Now()
 	if req.PinnedResourcesOnly {
-		clusterName, err := a.authServer.GetClusterName()
-		if err != nil {
-			return nil, trace.Wrap(err, "getting cluster name")
-		}
-
 		prefs, err := a.authServer.GetUserPreferences(ctx, a.context.User.GetName())
 		if err != nil {
 			return nil, trace.Wrap(err, "getting user preferences")
 		}
-		clusters := prefs.PinnedResources.GetPinnedResources()
-		clusterIDs, ok := clusters[clusterName.GetClusterName()]
-		if !ok {
+		if len(prefs.ClusterPreferences.PinnedResources.ResourceIds) < 1 {
 			return &proto.ListUnifiedResourcesResponse{}, nil
 		}
-		resp, err := a.authServer.UnifiedResourceCache.GetUnifiedResourcesByIDs(ctx, clusterIDs.ResourceIds)
+		resp, err := a.authServer.UnifiedResourceCache.GetUnifiedResourcesByIDs(ctx, prefs.ClusterPreferences.PinnedResources.ResourceIds)
 		if err != nil {
 			return nil, trace.Wrap(err, "getting unified resources by ID")
 		}
