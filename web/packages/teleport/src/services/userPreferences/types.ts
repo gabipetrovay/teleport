@@ -36,16 +36,21 @@ export type OnboardUserPreferences = {
   preferredResources: ClusterResource[];
 };
 
-// PinnedResourcesUserPreferences is a map of ClusterID to an array of unified_ids of a resource
-export type PinnedResourcesUserPreferences = Record<string, string[]>;
-
 export interface UserPreferences {
   theme: ThemePreference;
   assist: AssistUserPreferences;
   onboard: OnboardUserPreferences;
-  pinnedResources: PinnedResourcesUserPreferences;
+  clusterPreferences: UserClusterPreferences;
 }
 
+// UserClusterPreferences are user preferences that are
+// different per cluster.
+export interface UserClusterPreferences {
+  // pinnedResources is an array of resource IDs.
+  pinnedResources: string[];
+}
+
+export type GetUserClusterPreferencesResponse = UserClusterPreferences;
 export type GetUserPreferencesResponse = UserPreferences;
 
 export function deprecatedThemeToThemePreference(

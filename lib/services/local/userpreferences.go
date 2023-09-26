@@ -44,7 +44,11 @@ func DefaultUserPreferences() *userpreferencesv1.UserPreferences {
 		Onboard: &userpreferencesv1.OnboardUserPreferences{
 			PreferredResources: []userpreferencesv1.Resource{},
 		},
-		PinnedResources: &userpreferencesv1.PinnedResourcesUserPreferences{},
+		ClusterPreferences: &userpreferencesv1.ClusterUserPreferences{
+			PinnedResources: &userpreferencesv1.PinnedResourcesUserPreferences{
+				ResourceIds: []string{},
+			},
+		},
 	}
 }
 

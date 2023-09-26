@@ -24,6 +24,7 @@ import (
 
 	userpreferencesv1 "github.com/gravitational/teleport/api/gen/proto/go/userpreferences/v1"
 	"github.com/gravitational/teleport/lib/httplib"
+	"github.com/gravitational/teleport/lib/reversetunnelclient"
 )
 
 // AssistUserPreferencesResponse is the JSON response for the assist user preferences.
@@ -36,12 +37,60 @@ type OnboardUserPreferencesResponse struct {
 	PreferredResources []userpreferencesv1.Resource `json:"preferredResources"`
 }
 
+type ClusterUserPreferencesResponse struct {
+	PinnedResources []string `json:"pinnedResources"`
+}
+
 // UserPreferencesResponse is the JSON response for the user preferences.
 type UserPreferencesResponse struct {
-	Assist          AssistUserPreferencesResponse  `json:"assist"`
-	Theme           userpreferencesv1.Theme        `json:"theme"`
-	Onboard         OnboardUserPreferencesResponse `json:"onboard"`
-	PinnedResources map[string][]string            `json:"pinnedResources"`
+	Assist             AssistUserPreferencesResponse  `json:"assist"`
+	Theme              userpreferencesv1.Theme        `json:"theme"`
+	Onboard            OnboardUserPreferencesResponse `json:"onboard"`
+	ClusterPreferences ClusterUserPreferencesResponse `json:"clusterPreferences,omitempty"`
+}
+
+func (h *Handler) getUserClusterPreferences(_ http.ResponseWriter, r *http.Request, p httprouter.Params, sctx *SessionContext, site reversetunnelclient.RemoteSite) (interface{}, error) {
+	authClient, err := sctx.GetUserClient(r.Context(), site)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	resp, err := authClient.GetUserPreferences(r.Context(), &userpreferencesv1.GetUserPreferencesRequest{})
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	return clusterPreferencesResponse(resp.Preferences.ClusterPreferences), nil
+}
+
+// updateUserClusterPreferences is a handler for PUT /webapi/user/preferences.
+func (h *Handler) updateUserClusterPreferences(_ http.ResponseWriter, r *http.Request, p httprouter.Params, sctx *SessionContext, site reversetunnelclient.RemoteSite) (any, error) {
+	req := UserPreferencesResponse{}
+
+	if err := httplib.ReadJSON(r, &req); err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	authClient, err := sctx.GetUserClient(r.Context(), site)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	preferences := &userpreferencesv1.UpsertUserPreferencesRequest{
+		Preferences: &userpreferencesv1.UserPreferences{
+			ClusterPreferences: &userpreferencesv1.ClusterUserPreferences{
+				PinnedResources: &userpreferencesv1.PinnedResourcesUserPreferences{
+					ResourceIds: req.ClusterPreferences.PinnedResources,
+				},
+			},
+		},
+	}
+
+	if err := authClient.UpsertUserPreferences(r.Context(), preferences); err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	return OK(), nil
 }
 
 // getUserPreferences is a handler for GET /webapi/user/preferences
@@ -82,7 +131,6 @@ func (h *Handler) updateUserPreferences(_ http.ResponseWriter, r *http.Request, 
 			Onboard: &userpreferencesv1.OnboardUserPreferences{
 				PreferredResources: req.Onboard.PreferredResources,
 			},
-			PinnedResources: convertToPinnedResourcesUserPreferencesProto(req.PinnedResources),
 		},
 	}
 
@@ -93,38 +141,25 @@ func (h *Handler) updateUserPreferences(_ http.ResponseWriter, r *http.Request, 
 	return OK(), nil
 }
 
-func convertToPinnedResourcesUserPreferencesProto(pinnedResources map[string][]string) *userpreferencesv1.PinnedResourcesUserPreferences {
-	pinnedResourcesProto := make(map[string]*userpreferencesv1.ClusterPinnedResources, len(pinnedResources))
-
-	for key, values := range pinnedResources {
-		pinnedResourcesProto[key] = &userpreferencesv1.ClusterPinnedResources{
-			ResourceIds: values,
-		}
-	}
-
-	return &userpreferencesv1.PinnedResourcesUserPreferences{
-		PinnedResources: pinnedResourcesProto,
-	}
-}
-
 // userPreferencesResponse creates a JSON response for the user preferences.
 func userPreferencesResponse(resp *userpreferencesv1.UserPreferences) *UserPreferencesResponse {
 	jsonResp := &UserPreferencesResponse{
-		Assist:          assistUserPreferencesResponse(resp.Assist),
-		Theme:           resp.Theme,
-		Onboard:         onboardUserPreferencesResponse(resp.Onboard),
-		PinnedResources: pinnedResourcesUserPreferencesResponse(resp.PinnedResources),
+		Assist:  assistUserPreferencesResponse(resp.Assist),
+		Theme:   resp.Theme,
+		Onboard: onboardUserPreferencesResponse(resp.Onboard),
 	}
 
 	return jsonResp
 }
 
-func pinnedResourcesUserPreferencesResponse(resp *userpreferencesv1.PinnedResourcesUserPreferences) map[string][]string {
-	pinnedResources := make(map[string][]string, len(resp.PinnedResources))
-	for key, value := range resp.PinnedResources {
-		pinnedResources[key] = value.ResourceIds
+func clusterPreferencesResponse(resp *userpreferencesv1.ClusterUserPreferences) ClusterUserPreferencesResponse {
+	jsonResp := ClusterUserPreferencesResponse{
+		PinnedResources: make([]string, 0, len(resp.PinnedResources.ResourceIds)),
 	}
-	return pinnedResources
+
+	jsonResp.PinnedResources = append(jsonResp.PinnedResources, resp.PinnedResources.ResourceIds...)
+
+	return jsonResp
 }
 
 // assistUserPreferencesResponse creates a JSON response for the assist user preferences.

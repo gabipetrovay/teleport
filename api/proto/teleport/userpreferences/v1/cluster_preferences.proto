@@ -18,15 +18,14 @@ package teleport.userpreferences.v1;
 
 option go_package = "github.com/gravitational/teleport/api/gen/proto/go/userpreferences/v1;userpreferencesv1";
 
-// ClusterPinnedResources is a list of resource ids pinned per cluster
-message ClusterPinnedResources {
-  // resource_ids is a list of resource ids
-  repeated string resource_ids = 1;
-}
-
 // PinnedResourcesUserPreferences is a collection of resource IDs that will be
 // displayed in the user's pinned resources tab in the Web UI
 message PinnedResourcesUserPreferences {
-  // pinned_resources is a map of resource IDs pinned per cluster
-  map<string, ClusterPinnedResources> pinned_resources = 1;
+  // pinned_resources is a map of resource IDs
+  repeated string resource_ids = 1;
+}
+
+// ClusterUserPreferences are user preferences saved per cluster
+message ClusterUserPreferences {
+  PinnedResourcesUserPreferences pinned_resources = 1;
 }
