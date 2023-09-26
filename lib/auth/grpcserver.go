@@ -71,7 +71,6 @@ import (
 	"github.com/gravitational/teleport/lib/events"
 	"github.com/gravitational/teleport/lib/httplib"
 	"github.com/gravitational/teleport/lib/joinserver"
-	"github.com/gravitational/teleport/lib/modules"
 	"github.com/gravitational/teleport/lib/observability/metrics"
 	"github.com/gravitational/teleport/lib/services"
 	"github.com/gravitational/teleport/lib/services/local"
@@ -860,6 +859,31 @@ func (g *GRPCServer) SubmitAccessReview(ctx context.Context, review *types.Acces
 	}
 
 	return r, nil
+}
+
+func (g *GRPCServer) GetAccessRequestAllowedPromotions(ctx context.Context, request *authpb.AccessRequestAllowedPromotionRequest) (*authpb.AccessRequestAllowedPromotionResponse, error) {
+	auth, err := g.authenticate(ctx)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	accessRequest, err := auth.GetAccessRequests(ctx, types.AccessRequestFilter{
+		ID: request.AccessRequestID,
+	})
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	if len(accessRequest) != 1 {
+		return nil, trace.NotFound("access request not found")
+	}
+
+	allowedPromotions, err := auth.ServerWithRoles.GetAccessRequestAllowedPromotions(ctx, accessRequest[0])
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	return &authpb.AccessRequestAllowedPromotionResponse{
+		AllowedPromotions: allowedPromotions,
+	}, nil
 }
 
 func (g *GRPCServer) GetAccessCapabilities(ctx context.Context, req *types.AccessCapabilitiesRequest) (*types.AccessCapabilities, error) {
@@ -5378,7 +5402,7 @@ func NewGRPCServer(cfg GRPCServerConfig) (*GRPCServer, error) {
 	// Only register the service if this is an open source build. Enterprise builds
 	// register the actual service via an auth plugin, if we register here then all
 	// Enterprise builds would fail with a duplicate service registered error.
-	if modules.GetModules().BuildType() == modules.BuildOSS {
+	if cfg.PluginRegistry == nil || !cfg.PluginRegistry.IsRegistered("auth.enterprise") {
 		loginrulepb.RegisterLoginRuleServiceServer(server, loginrule.NotImplementedService{})
 	}
 
