@@ -64,7 +64,7 @@ func TestService_GetUserPreferences(t *testing.T) {
 					},
 					ClusterPreferences: &userpreferencesv1.ClusterUserPreferences{
 						PinnedResources: &userpreferencesv1.PinnedResourcesUserPreferences{
-							ResourceIds: []string{"node1", "node2"},
+							ResourceIds: []string{},
 						},
 					},
 				},
