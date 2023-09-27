@@ -183,14 +183,6 @@ func overwriteValues(dst, src protoreflect.ProtoMessage) error {
 func overwriteValuesRecursive(dst, src protoreflect.Message) {
 	src.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
 		switch {
-		case fd.IsMap():
-			srcMap := v.Map()
-			dstMap := dst.Mutable(fd).Map()
-
-			srcMap.Range(func(k protoreflect.MapKey, vv protoreflect.Value) bool {
-				dstMap.Set(k, vv)
-				return true
-			})
 		case fd.Message() != nil:
 			overwriteValuesRecursive(dst.Mutable(fd).Message(), src.Get(fd).Message())
 		default:
