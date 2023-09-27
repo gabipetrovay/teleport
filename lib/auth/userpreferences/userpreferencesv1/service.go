@@ -88,9 +88,6 @@ func (a *Service) UpsertUserPreferences(ctx context.Context, req *userpreference
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
-	if !authz.IsLocalUser(*authCtx) {
-		return nil, trace.AccessDenied("Non-local user cannot upsert user preferences")
-	}
 
 	username := authCtx.User.GetName()
 
