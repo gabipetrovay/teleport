@@ -234,21 +234,28 @@ func newWatcher(ctx context.Context, resourceCache *UnifiedResourceCache, cfg Re
 }
 
 func resourceKey(resource types.Resource) []byte {
-	var kind string
+	var name, kind string
 	// set the kind to the appropriate "contained" type, rather than
 	// the container type. This better represents what resource is
 	// being sent to the ui
 	switch r := resource.(type) {
-	case types.AppServer, types.SAMLIdPServiceProvider:
+	case types.AppServer:
+		name = r.GetApp().GetName()
+		kind = types.KindApp
+	case types.SAMLIdPServiceProvider:
+		name = r.GetName()
 		kind = types.KindApp
 	case types.KubeServer:
+		name = r.GetCluster().GetName()
 		kind = types.KindKubernetesCluster
 	case types.DatabaseServer:
+		name = r.GetDatabase().GetName()
 		kind = types.KindDatabase
 	default:
 		kind = r.GetKind()
+		name = r.GetName()
 	}
-	return backend.Key(prefix, resource.GetName(), kind)
+	return backend.Key(prefix, name, kind)
 }
 
 func (c *UnifiedResourceCache) getResourcesAndUpdateCurrent(ctx context.Context) error {
@@ -508,7 +515,7 @@ func (c *UnifiedResourceCache) processEventAndUpdateCurrent(ctx context.Context,
 		c.delete(ctx, resourceKey(event.Resource))
 	case types.OpPut:
 		c.put(ctx, item{
-			Key:   resourceKey(event.Resource),
+			Key:   resourceKey(event.Resource.(resource)),
 			Value: event.Resource.(resource),
 		})
 	default:
