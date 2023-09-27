@@ -17,6 +17,7 @@ package services
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -240,20 +241,29 @@ func resourceKey(resource types.Resource) []byte {
 	// being sent to the ui
 	switch r := resource.(type) {
 	case types.AppServer:
-		name = r.GetApp().GetName()
-		kind = types.KindApp
+		app := r.GetApp()
+		if app != nil {
+			name = app.GetName()
+			kind = types.KindApp
+		}
 	case types.SAMLIdPServiceProvider:
 		name = r.GetName()
 		kind = types.KindApp
 	case types.KubeServer:
-		name = r.GetCluster().GetName()
-		kind = types.KindKubernetesCluster
+		cluster := r.GetCluster()
+		if cluster != nil {
+			name = r.GetCluster().GetName()
+			kind = types.KindKubernetesCluster
+		}
 	case types.DatabaseServer:
-		name = r.GetDatabase().GetName()
-		kind = types.KindDatabase
+		db := r.GetDatabase()
+		if db != nil {
+			name = db.GetName()
+			kind = types.KindDatabase
+		}
 	default:
-		kind = r.GetKind()
-		name = r.GetName()
+		name = resource.GetName()
+		kind = resource.GetKind()
 	}
 	return backend.Key(prefix, name, kind)
 }
@@ -514,8 +524,11 @@ func (c *UnifiedResourceCache) processEventAndUpdateCurrent(ctx context.Context,
 	case types.OpDelete:
 		c.delete(ctx, resourceKey(event.Resource))
 	case types.OpPut:
+		fmt.Println("-------------")
+		fmt.Printf("%T\n", event.Resource)
+		fmt.Println("-------------")
 		c.put(ctx, item{
-			Key:   resourceKey(event.Resource.(resource)),
+			Key:   resourceKey(event.Resource),
 			Value: event.Resource.(resource),
 		})
 	default:
