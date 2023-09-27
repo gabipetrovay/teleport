@@ -63,7 +63,7 @@ The only custom changes required for `teleport-private` is the need to maintain 
 
 #### Teleport Security Scanning
 
-This tooling will leveraged to address gaps in our release branch scanning in the following manner:
+This tooling will be leveraged to address gaps in our release branch scanning in the following manner:
 1. Create four repositories, one for each supported version (and one extra described below): `teleport-sec_scan-1`, `teleport-sec_scan-2`, `teleport-sec_scan-3`, and `teleport-sec_scan-4`. The 1 will refer to our latest release branch, determined by automation, with each subsequent repository covering a consecutively older version.
 2. Set up sync automation as documented above.
 3. Modify the Dependabot configuration to provide notifications only for security updates on these branches.
