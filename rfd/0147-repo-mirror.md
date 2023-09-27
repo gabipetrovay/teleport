@@ -11,9 +11,9 @@ This RFD outlines a method for continuously and automatically syncing a GitHub r
 
 ## Why
 
-We currently face a few frictions which could be addressed through a more robust repository sync mechanism:
+We currently face a few frictions that could be addressed through a more robust repository sync mechanism:
 1. Our internal `teleport-private` mirror of `teleport`, used for security development, currently requires manual updates to sync.
-2. Certain tools, like Dependabot, don't support scanning non-default branches, necessitating manual efforts to manage our release branches.
+2. Certain tools, such as Dependabot, don't support scanning non-default branches, necessitating manual efforts to manage our release branches.
 3. Due to the committing of CI and scanning configurations in the repository, we receive duplicate alerts when using a repository for testing or as an internal mirror/fork.
 
 While addressing these immediate needs, the aim of this RFD is to establish a generic pattern for repository mirroring. This will provide flexibility for future requirements when syncing any upstream repository to a fork or mirror that we maintain.
@@ -21,7 +21,7 @@ While addressing these immediate needs, the aim of this RFD is to establish a ge
 ## Details
 
 The core requirements of this solution are:
-* Automatic and regular updates to a repository to ensure is's state matches the upstream.
+* Automatic and regular updates to a repository to ensure its state matches the upstream.
 * The ability to make additional changes to the mirror repository, separate from the upstream repository (e.g., disabling actions we don't want to run on the mirror, or enabling additional scanning/actions).
 
 ### Branch Structure
@@ -46,7 +46,7 @@ At a high level the action will execute the following steps:
 3. Fetch our custom changes.
 4. Push the exact copy branches `sync/upstream-[UPSTREAM_BRANCH_NAME]` to our mirror.
 5. Rebase our `sync/rebase` branch onto the latest upstream changes, using the script for conflict resolutions when necessary and possible.
-6. Force-push the rebased changes to the default branch of our repository mirror
+6. Force-push the rebased changes to the default branch of our repository mirror.
 
 ### Specific Implementation Details
 
