@@ -5,6 +5,11 @@ state: draft
 
 # RFD 144 - Automatic Repo Mirroring
 
+## Required approvers
+
+* Engineering: @zmb3 || @codingllama || @rosstimothy
+* Security: @reedloden || @wadells
+
 ## What
 
 This RFD outlines a method for continuously and automatically syncing a GitHub repository. This can be used to create private copies of a repository.
