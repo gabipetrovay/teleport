@@ -1635,7 +1635,7 @@ func (a *ServerWithRoles) ListUnifiedResources(ctx context.Context, req *proto.L
 		if len(prefs.ClusterPreferences.PinnedResources.ResourceIds) == 0 {
 			return &proto.ListUnifiedResourcesResponse{}, nil
 		}
-		resp, err := a.authServer.UnifiedResourceCache.GetUnifiedResourcesByIDs(ctx, prefs.ClusterPreferences.PinnedResources.ResourceIds)
+		resp, err := a.authServer.UnifiedResourceCache.GetUnifiedResourcesByIDs(ctx, prefs.ClusterPreferences.PinnedResources.GetResourceIds())
 		if err != nil {
 			return nil, trace.Wrap(err, "getting unified resources by ID")
 		}
