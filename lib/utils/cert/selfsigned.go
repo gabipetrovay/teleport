@@ -77,6 +77,7 @@ func GenerateSelfSignedCert(hostNames []string, ipAddresses []string) (*Credenti
 		NotBefore:             notBefore,
 		NotAfter:              notAfter,
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, // https://support.apple.com/en-in/HT210176
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 	}
