@@ -16,7 +16,9 @@ We currently face a few frictions that could be addressed through a more robust 
 2. Certain tools, such as Dependabot, don't support scanning non-default branches, necessitating manual efforts to manage our release branches.
 3. Due to the committing of CI and scanning configurations in the repository, we receive duplicate alerts when using a repository for testing or as an internal mirror/fork.
 
-While addressing these immediate needs, the aim of this RFD is to establish a generic pattern for repository mirroring. This will provide flexibility for future requirements when syncing any upstream repository to a fork or mirror that we maintain.
+While addressing these immediate needs, the aim of this RFD is to establish a generic pattern for repository mirroring. Although this is a generic pattern, this is not flexible to the point of being suitable for syncing external forks. External forks face a couple issues with this strategy:
+1. This process of rebasing rewrites the history on the default branch, that is not suitable for anything we depend on. Instead a process with controlled merge commits would be better.
+2. Using an automatic merge commit would produce a very messy history to review. We likely only want to bring in upstream changes on an as-needed basis which can be controlled and reviewed.
 
 ## Details
 
