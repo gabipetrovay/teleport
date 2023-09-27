@@ -42,6 +42,7 @@ type AccessRequestData struct {
 	ResolutionTag     ResolutionTag
 	ResolutionReason  string
 	SystemAnnotations map[string][]string
+	Resources         []string
 }
 
 // DecodeAccessRequestData deserializes a string map to PluginData struct.
@@ -49,6 +50,9 @@ func DecodeAccessRequestData(dataMap map[string]string) (data AccessRequestData,
 	data.User = dataMap["user"]
 	if str := dataMap["roles"]; str != "" {
 		data.Roles = strings.Split(str, ",")
+	}
+	if str := dataMap["resources"]; str != "" {
+		data.Resources = strings.Split(str, ",")
 	}
 	data.RequestReason = dataMap["request_reason"]
 	if str := dataMap["reviews_count"]; str != "" {
@@ -76,6 +80,7 @@ func EncodeAccessRequestData(data AccessRequestData) (map[string]string, error) 
 
 	result["user"] = data.User
 	result["roles"] = strings.Join(data.Roles, ",")
+	result["resources"] = strings.Join(data.Resources, ",")
 	result["request_reason"] = data.RequestReason
 
 	var reviewsCountStr string

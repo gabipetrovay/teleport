@@ -247,6 +247,7 @@ func (a *BaseApp) onPendingRequest(ctx context.Context, req types.AccessRequest)
 		Roles:             req.GetRoles(),
 		RequestReason:     req.GetRequestReason(),
 		SystemAnnotations: req.GetSystemAnnotations(),
+		Resources:         types.ResourceIDsToStrings(req.GetRequestedResourceIDs()),
 	}
 
 	_, err := a.pluginData.Create(ctx, reqID, GenericPluginData{AccessRequestData: reqData})

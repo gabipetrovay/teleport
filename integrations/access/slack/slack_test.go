@@ -106,8 +106,8 @@ func (s *SlackSuite) SetupSuite() {
 	var bootstrap integration.Bootstrap
 
 	// Set up user who can request the access to role "editor".
-
-	conditions := types.RoleConditions{Request: &types.AccessRequestConditions{Roles: []string{"editor"}}}
+	// TODO: this requires test to use teleport enterprise binary, check if that's a problem
+	conditions := types.RoleConditions{Request: &types.AccessRequestConditions{Roles: []string{"editor"}, SearchAsRoles: []string{"editor"}}}
 	if teleportFeatures.AdvancedAccessWorkflows {
 		conditions.Request.Thresholds = []types.AccessReviewThreshold{types.AccessReviewThreshold{Approve: 2, Deny: 2}}
 	}
@@ -228,7 +228,7 @@ func (s *SlackSuite) reviewer2() *integration.Client {
 	return s.clients[s.userNames.reviewer2]
 }
 
-func (s *SlackSuite) newAccessRequest(reviewers []User) types.AccessRequest {
+func (s *SlackSuite) newAccessRequest(reviewers []User, resources []string) types.AccessRequest {
 	t := s.T()
 	t.Helper()
 
@@ -236,6 +236,15 @@ func (s *SlackSuite) newAccessRequest(reviewers []User) types.AccessRequest {
 	require.NoError(t, err)
 	// max size of request was decreased here: https://github.com/gravitational/teleport/pull/13298
 	req.SetRequestReason("because of " + strings.Repeat("A", 4000))
+	resourceIDs := make([]types.ResourceID, 0, len(resources))
+	for _, resource := range resources {
+		resourceIDs = append(resourceIDs, types.ResourceID{
+			ClusterName: "local-site",
+			Kind:        "node",
+			Name:        resource,
+		})
+	}
+	req.SetRequestedResourceIDs(resourceIDs)
 	var suggestedReviewers []string
 	for _, user := range reviewers {
 		suggestedReviewers = append(suggestedReviewers, user.Profile.Email)
@@ -244,11 +253,11 @@ func (s *SlackSuite) newAccessRequest(reviewers []User) types.AccessRequest {
 	return req
 }
 
-func (s *SlackSuite) createAccessRequest(reviewers []User) types.AccessRequest {
+func (s *SlackSuite) createAccessRequest(reviewers []User, resources []string) types.AccessRequest {
 	t := s.T()
 	t.Helper()
 
-	req := s.newAccessRequest(reviewers)
+	req := s.newAccessRequest(reviewers, resources)
 	out, err := s.requestor().CreateAccessRequestV2(s.Context(), req)
 	require.NoError(t, err)
 	return out
@@ -276,7 +285,7 @@ func (s *SlackSuite) TestMessagePosting() {
 	reviewer2 := s.fakeSlack.StoreUser(User{Profile: UserProfile{Email: s.userNames.reviewer2}})
 
 	s.startApp()
-	request := s.createAccessRequest([]User{reviewer2, reviewer1})
+	request := s.createAccessRequest([]User{reviewer2, reviewer1}, []string{"node1", "node2"})
 
 	pluginData := s.checkPluginData(request.GetName(), func(data common.GenericPluginData) bool {
 		return len(data.SentMessages) > 0
@@ -332,7 +341,7 @@ func (s *SlackSuite) TestRecipientsConfig() {
 
 	s.startApp()
 
-	request := s.createAccessRequest(nil)
+	request := s.createAccessRequest(nil, nil)
 	pluginData := s.checkPluginData(request.GetName(), func(data common.GenericPluginData) bool {
 		return len(data.SentMessages) > 0
 	})
@@ -372,7 +381,7 @@ func (s *SlackSuite) TestApproval() {
 
 	s.startApp()
 
-	req := s.createAccessRequest([]User{reviewer})
+	req := s.createAccessRequest([]User{reviewer}, nil)
 	msg, err := s.fakeSlack.CheckNewMessage(s.Context())
 	require.NoError(t, err)
 	assert.Equal(t, reviewer.ID, msg.Channel)
@@ -397,7 +406,7 @@ func (s *SlackSuite) TestDenial() {
 
 	s.startApp()
 
-	req := s.createAccessRequest([]User{reviewer})
+	req := s.createAccessRequest([]User{reviewer}, nil)
 	msg, err := s.fakeSlack.CheckNewMessage(s.Context())
 	require.NoError(t, err)
 	assert.Equal(t, reviewer.ID, msg.Channel)
@@ -427,7 +436,7 @@ func (s *SlackSuite) TestReviewReplies() {
 
 	s.startApp()
 
-	req := s.createAccessRequest([]User{reviewer})
+	req := s.createAccessRequest([]User{reviewer}, nil)
 	s.checkPluginData(req.GetName(), func(data common.GenericPluginData) bool {
 		return len(data.SentMessages) > 0
 	})
@@ -480,7 +489,7 @@ func (s *SlackSuite) TestApprovalByReview() {
 
 	s.startApp()
 
-	req := s.createAccessRequest([]User{reviewer})
+	req := s.createAccessRequest([]User{reviewer}, nil)
 	msg, err := s.fakeSlack.CheckNewMessage(s.Context())
 	require.NoError(t, err)
 	assert.Equal(t, reviewer.ID, msg.Channel)
@@ -537,7 +546,7 @@ func (s *SlackSuite) TestDenialByReview() {
 
 	s.startApp()
 
-	req := s.createAccessRequest([]User{reviewer})
+	req := s.createAccessRequest([]User{reviewer}, nil)
 	msg, err := s.fakeSlack.CheckNewMessage(s.Context())
 	require.NoError(t, err)
 	assert.Equal(t, reviewer.ID, msg.Channel)
@@ -590,7 +599,7 @@ func (s *SlackSuite) TestExpiration() {
 
 	s.startApp()
 
-	request := s.createAccessRequest([]User{reviewer})
+	request := s.createAccessRequest([]User{reviewer}, nil)
 	msg, err := s.fakeSlack.CheckNewMessage(s.Context())
 	require.NoError(t, err)
 	assert.Equal(t, reviewer.ID, msg.Channel)
