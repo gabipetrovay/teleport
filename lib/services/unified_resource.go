@@ -126,8 +126,9 @@ func (c *UnifiedResourceCache) put(ctx context.Context, resource resource) error
 	defer c.mu.Unlock()
 	key := resourceKey(resource)
 	c.resources[key] = resource
-	c.nameTree.ReplaceOrInsert(&item{Key: resourceSortKey(resource, SortByName), Value: key})
-	c.typeTree.ReplaceOrInsert(&item{Key: resourceSortKey(resource, SortByKind), Value: key})
+	sortKey := makeResourceSortKey(resource)
+	c.nameTree.ReplaceOrInsert(&item{Key: sortKey.ByName, Value: key})
+	c.typeTree.ReplaceOrInsert(&item{Key: sortKey.ByType, Value: key})
 	return nil
 }
 
@@ -137,8 +138,9 @@ func putResources[T resource](cache *UnifiedResourceCache, resources []T) {
 		key := resourceKey(resource)
 		cache.resources[key] = resource
 
-		cache.nameTree.ReplaceOrInsert(&item{Key: resourceSortKey(resource, SortByName), Value: key})
-		cache.typeTree.ReplaceOrInsert(&item{Key: resourceSortKey(resource, SortByKind), Value: key})
+		sortKey := makeResourceSortKey(resource)
+		cache.nameTree.ReplaceOrInsert(&item{Key: sortKey.ByName, Value: key})
+		cache.typeTree.ReplaceOrInsert(&item{Key: sortKey.ByType, Value: key})
 	}
 }
 
@@ -151,15 +153,14 @@ func (c *UnifiedResourceCache) delete(ctx context.Context, res types.Resource) e
 	// map and generate our sort keys. Then we can delete from the map and all the trees at once
 	resource := c.resources[key]
 
-	nameSortKey := resourceSortKey(resource, SortByName)
-	typeSortKey := resourceSortKey(resource, SortByKind)
+	sortKey := makeResourceSortKey(resource)
 
 	return c.read(ctx, func(cache *UnifiedResourceCache) error {
-		if _, ok := cache.nameTree.Delete(&item{Key: nameSortKey}); !ok {
-			return trace.NotFound("key %q is not found in unified cache name sort tree", string(nameSortKey))
+		if _, ok := cache.nameTree.Delete(&item{Key: sortKey.ByName}); !ok {
+			return trace.NotFound("key %q is not found in unified cache name sort tree", string(sortKey.ByName))
 		}
-		if _, ok := cache.typeTree.Delete(&item{Key: typeSortKey}); !ok {
-			return trace.NotFound("key %q is not found in unified cache type sort tree", string(typeSortKey))
+		if _, ok := cache.typeTree.Delete(&item{Key: sortKey.ByType}); !ok {
+			return trace.NotFound("key %q is not found in unified cache type sort tree", string(sortKey.ByType))
 		}
 		// delete from resource map
 		delete(c.resources, key)
@@ -316,8 +317,13 @@ func resourceKey(resource types.Resource) string {
 	return resource.GetName() + "/" + resource.GetKind()
 }
 
+type resourceSortKey struct {
+	ByName []byte
+	ByType []byte
+}
+
 // resourceSortKey will generate a key to be used in the sort trees
-func resourceSortKey(resource types.Resource, sortType string) []byte {
+func makeResourceSortKey(resource types.Resource) resourceSortKey {
 	var name, kind string
 	// set the kind to the appropriate "contained" type, rather than
 	// the container type.
@@ -351,13 +357,9 @@ func resourceSortKey(resource types.Resource, sortType string) []byte {
 		kind = resource.GetKind()
 	}
 
-	switch sortType {
-	case SortByName:
-		return backend.Key(prefix, name, kind)
-	case SortByKind:
-		return backend.Key(prefix, kind, name)
-	default:
-		return backend.Key(prefix, name, kind)
+	return resourceSortKey{
+		ByName: backend.Key(prefix, name, kind),
+		ByType: backend.Key(prefix, kind, name),
 	}
 }
 
