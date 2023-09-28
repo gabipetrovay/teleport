@@ -195,8 +195,16 @@ func (c *UnifiedResourceCache) getRange(ctx context.Context, startKey []byte, ma
 		if err != nil {
 			return trace.Wrap(err, "getting sort tree")
 		}
-
-		iterateFunc := func(item *item) bool {
+		var iterateRange func(lessOrEqual, greaterThan *item, iterator btree.ItemIteratorG[*item])
+		var endKey []byte
+		if req.SortBy.IsDesc {
+			iterateRange = tree.DescendRange
+			endKey = backend.Key(prefix)
+		} else {
+			iterateRange = tree.AscendRange
+			endKey = backend.RangeEnd(backend.Key(prefix))
+		}
+		iterateRange(&item{Key: startKey}, &item{Key: endKey}, func(item *item) bool {
 			// get resource from resource map
 			resourceFromMap := cache.resources[item.Value]
 			if resourceFromMap == nil {
@@ -223,13 +231,7 @@ func (c *UnifiedResourceCache) getRange(ctx context.Context, startKey []byte, ma
 			}
 			res = append(res, resourceFromMap)
 			return true
-		}
-
-		if req.SortBy.IsDesc {
-			tree.DescendRange(&item{Key: startKey}, &item{Key: backend.Key(prefix)}, iterateFunc)
-		} else {
-			tree.AscendRange(&item{Key: startKey}, &item{Key: backend.RangeEnd(backend.Key(prefix))}, iterateFunc)
-		}
+		})
 		return nil
 	})
 	if err != nil {
