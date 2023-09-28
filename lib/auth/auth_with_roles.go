@@ -1634,72 +1634,21 @@ func (a *ServerWithRoles) ListUnifiedResources(ctx context.Context, req *proto.L
 		PredicateExpression: req.PredicateExpression,
 		Kinds:               req.Kinds,
 	}
+
+	resourceChecker, err := a.newResourceAccessChecker(types.KindUnifiedResource)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
 	unifiedResources, nextKey, err := a.authServer.UnifiedResourceCache.IterateUnifiedResources(ctx, func(resource types.ResourceWithLabels) (bool, error) {
-		switch r := resource.(type) {
-		case types.Server:
-			if err := a.checkAccessToNode(r); err != nil {
-				if trace.IsAccessDenied(err) {
-					return false, nil
-				}
-				return false, trace.Wrap(err)
-			}
-			match, err := services.MatchResourceByFilters(r, filter, nil)
-			return match, err
-		case types.DatabaseServer:
-			{
-				if err := a.checkAccessToDatabase(r.GetDatabase()); err != nil {
-					if trace.IsAccessDenied(err) {
-						return false, nil
-					}
-					return false, trace.Wrap(err)
-				}
-				match, err := services.MatchResourceByFilters(r, filter, nil)
-				return match, err
-			}
-		case types.AppServer:
-			{
-				if err := a.checkAccessToApp(r.GetApp()); err != nil {
-					if trace.IsAccessDenied(err) {
-						return false, nil
-					}
-					return false, trace.Wrap(err)
-				}
-				match, err := services.MatchResourceByFilters(r, filter, nil)
-				return match, err
-			}
-		case types.SAMLIdPServiceProvider:
-			{
-				if err := a.action(apidefaults.Namespace, types.KindSAMLIdPServiceProvider, types.VerbList); err == nil {
-					match, err := services.MatchResourceByFilters(r, filter, nil /* seen map */)
-					return match, err
-				}
+		if err := resourceChecker.CanAccess(resource); err != nil {
+			if trace.IsAccessDenied(err) {
 				return false, nil
 			}
-		case types.KubeServer:
-			kube := r.GetCluster()
-			if err := a.checkAccessToKubeCluster(kube); err != nil {
-				if trace.IsAccessDenied(err) {
-					return false, nil
-				}
-				return false, trace.Wrap(err)
-			}
-			match, err := services.MatchResourceByFilters(r, filter, nil /* seen map */)
-			return match, err
-		case types.WindowsDesktop:
-			{
-				if err := a.checkAccessToWindowsDesktop(r); err != nil {
-					if trace.IsAccessDenied(err) {
-						return false, nil
-					}
-
-					return false, trace.Wrap(err)
-				}
-				match, err := services.MatchResourceByFilters(r, filter, nil /* seen map */)
-				return match, err
-			}
-		default:
-			return false, nil
+			return false, trace.Wrap(err)
 		}
+		match, err := services.MatchResourceByFilters(resource, filter, nil)
+		return match, err
 	}, req)
 	if err != nil {
 		return nil, trace.Wrap(err, "filtering unified resources")
@@ -2037,7 +1986,7 @@ func (r resourceChecker) CanAccess(resource types.Resource) error {
 // newResourceAccessChecker creates a resourceAccessChecker for the provided resource type
 func (a *ServerWithRoles) newResourceAccessChecker(resource string) (resourceAccessChecker, error) {
 	switch resource {
-	case types.KindAppServer, types.KindDatabaseServer, types.KindDatabaseService, types.KindWindowsDesktop, types.KindWindowsDesktopService, types.KindNode, types.KindKubeServer, types.KindUserGroup:
+	case types.KindAppServer, types.KindDatabaseServer, types.KindDatabaseService, types.KindWindowsDesktop, types.KindWindowsDesktopService, types.KindNode, types.KindKubeServer, types.KindUserGroup, types.KindUnifiedResource:
 		return &resourceChecker{AccessChecker: a.context.Checker}, nil
 	default:
 		return nil, trace.BadParameter("could not check access to resource type %s", resource)
