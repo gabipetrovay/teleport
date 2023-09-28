@@ -35,6 +35,7 @@ type Conn struct {
 	protocol  Protocol
 	proxyLine *ProxyLine
 	reader    *bufio.Reader
+	writeSkip int
 }
 
 // NewConn returns a net.Conn wrapper that supports peeking into the connection.
@@ -42,6 +43,15 @@ func NewConn(conn net.Conn) *Conn {
 	return &Conn{
 		Conn:   conn,
 		reader: bufio.NewReader(conn),
+	}
+}
+
+// NewConn returns a net.Conn wrapper that supports peeking into the connection.
+func NewConnWriteSkip(conn net.Conn, writeSkip int) *Conn {
+	return &Conn{
+		Conn:      conn,
+		reader:    bufio.NewReader(conn),
+		writeSkip: writeSkip,
 	}
 }
 
@@ -53,6 +63,23 @@ func (c *Conn) NetConn() net.Conn {
 // Read reads from connection
 func (c *Conn) Read(p []byte) (int, error) {
 	return c.reader.Read(p)
+}
+
+func (c *Conn) Write(p []byte) (int, error) {
+	if c.writeSkip == 0 {
+		return c.Conn.Write(p)
+	}
+
+	if len(p) <= c.writeSkip {
+		c.writeSkip -= len(p)
+		return len(p), nil
+	}
+
+	skip := c.writeSkip
+	c.writeSkip = 0
+
+	n, err := c.Conn.Write(p[skip:])
+	return skip + n, trace.Wrap(err)
 }
 
 // LocalAddr returns local address of the connection
