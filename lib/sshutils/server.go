@@ -187,6 +187,13 @@ func SetClusterName(clusterName string) ServerOption {
 	}
 }
 
+func SetServerVersion(serverVersion string) ServerOption {
+	return func(s *Server) error {
+		s.cfg.ServerVersion = serverVersion
+		return nil
+	}
+}
+
 func NewServer(
 	component string,
 	a utils.NetAddr,
@@ -243,7 +250,9 @@ func NewServer(
 
 	// Teleport servers need to identify as such to allow passing of the client
 	// IP from the client to the proxy to the destination node.
-	s.cfg.ServerVersion = SSHVersionPrefix
+	if s.cfg.ServerVersion == "" {
+		s.cfg.ServerVersion = SSHVersionPrefix
+	}
 
 	return s, nil
 }

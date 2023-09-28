@@ -240,6 +240,9 @@ type Server struct {
 	proxySigner PROXYHeaderSigner
 	// caGetter is used to get host CA of the cluster to verify signed PROXY headers
 	caGetter CertAuthorityGetter
+
+	// serverVersion is the SSH server version string. It should start with "SSH-2.0-".
+	serverVersion string
 }
 
 // TargetMetadata returns metadata about the server.
@@ -731,6 +734,13 @@ func SetPublicAddrs(addrs []utils.NetAddr) ServerOption {
 	}
 }
 
+func SetServerVersion(serverVersion string) ServerOption {
+	return func(s *Server) error {
+		s.serverVersion = serverVersion
+		return nil
+	}
+}
+
 // New returns an unstarted server
 func New(
 	ctx context.Context,
@@ -869,6 +879,7 @@ func New(
 		sshutils.SetClock(s.clock),
 		sshutils.SetIngressReporter(s.ingressService, s.ingressReporter),
 		sshutils.SetClusterName(clusterName.GetClusterName()),
+		sshutils.SetServerVersion(s.serverVersion),
 	)
 	if err != nil {
 		return nil, trace.Wrap(err)
