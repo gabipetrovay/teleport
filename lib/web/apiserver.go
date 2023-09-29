@@ -2500,7 +2500,6 @@ func (h *Handler) getSiteNamespaces(w http.ResponseWriter, r *http.Request, _ ht
 }
 
 func makeUnifiedResourceRequest(r *http.Request) (*proto.ListUnifiedResourcesRequest, error) {
-
 	values := r.URL.Query()
 
 	limit, err := queryLimitAsInt32(values, "limit", defaults.MaxIterationLimit)
@@ -3837,7 +3836,6 @@ func consumeTokenForAPICall(ctx context.Context, proxyClient auth.ClientI, token
 	}
 
 	return token, nil
-
 }
 
 // checkTokenTTL returns true if the token is still valid.
