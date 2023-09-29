@@ -162,6 +162,10 @@ func ParseShortcut(in string) (string, error) {
 		return types.KindClusterNetworkingConfig, nil
 	case types.KindSessionRecordingConfig, "recording_config", "session_recording", "rec_config", "recconfig":
 		return types.KindSessionRecordingConfig, nil
+	case types.KindExternalAudit:
+		return types.KindExternalAudit, nil
+	case types.KindClusterExternalAudit:
+		return types.KindClusterExternalAudit, nil
 	case types.KindRemoteCluster, "remote_clusters", "rc", "rcs":
 		return types.KindRemoteCluster, nil
 	case types.KindSemaphore, "semaphores", "sem", "sems":

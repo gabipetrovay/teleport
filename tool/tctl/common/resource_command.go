@@ -113,6 +113,8 @@ func (rc *ResourceCommand) Initialize(app *kingpin.Application, config *servicec
 		types.KindClusterNetworkingConfig:  rc.createClusterNetworkingConfig,
 		types.KindClusterMaintenanceConfig: rc.createClusterMaintenanceConfig,
 		types.KindSessionRecordingConfig:   rc.createSessionRecordingConfig,
+		types.KindExternalAudit:            rc.createExternalAudit,
+		types.KindClusterExternalAudit:     rc.createClusterExternalAudit,
 		types.KindUIConfig:                 rc.createUIConfig,
 		types.KindLock:                     rc.createLock,
 		types.KindNetworkRestrictions:      rc.createNetworkRestrictions,
@@ -580,6 +582,38 @@ func (rc *ResourceCommand) createSessionRecordingConfig(ctx context.Context, cli
 		return trace.Wrap(err)
 	}
 	fmt.Printf("session recording configuration has been updated\n")
+	return nil
+}
+
+// createExternalAudit implements `tctl create external_audit.yaml` command.
+func (rc *ResourceCommand) createExternalAudit(ctx context.Context, client auth.ClientI, raw services.UnknownResource) error {
+	config, err := services.UnmarshalExternalAudit(raw.Raw)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	externalAuditClient := client.ExternalAuditClient()
+	_, err = externalAuditClient.CreateExternalAudit(ctx, config)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
+	fmt.Printf("external audit configuration has been updated\n")
+	return nil
+}
+
+// createClusterExternalAudit implements `tctl create external_audit.yaml` command.
+func (rc *ResourceCommand) createClusterExternalAudit(ctx context.Context, client auth.ClientI, raw services.UnknownResource) error {
+	config, err := services.UnmarshalClusterExternalAudit(raw.Raw)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	externalAuditClient := client.ExternalAuditClient()
+	err = externalAuditClient.SetClusterExternalAudit(ctx, config)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
+	fmt.Printf("cluster external audit configuration has been updated\n")
 	return nil
 }
 
@@ -1103,6 +1137,16 @@ func (rc *ResourceCommand) Delete(ctx context.Context, client auth.ClientI) (err
 			return trace.Wrap(err)
 		}
 		fmt.Printf("session recording configuration has been reset to defaults\n")
+	case types.KindExternalAudit:
+		if err := client.ExternalAuditClient().DeleteExternalAudit(ctx, rc.ref.Name); err != nil {
+			return trace.Wrap(err)
+		}
+		fmt.Printf("external audit configuration has been reset to defaults\n")
+	case types.KindClusterExternalAudit:
+		if err := client.ExternalAuditClient().DeleteClusterExternalAudit(ctx); err != nil {
+			return trace.Wrap(err)
+		}
+		fmt.Printf("cluster external audit configuration has been reset to defaults\n")
 	case types.KindLock:
 		name := rc.ref.Name
 		if rc.ref.SubKind != "" {

@@ -275,6 +275,12 @@ const (
 	// session recording configuration.
 	MetaNameSessionRecordingConfig = "session-recording-config"
 
+	// KindExternalAudit the resource for external audit.
+	KindExternalAudit = "external_audit"
+
+	// KindClusterExternalAudit the resource for cluster external audit.
+	KindClusterExternalAudit = "cluster_external_audit"
+
 	// KindClusterConfig is the resource that holds cluster level configuration.
 	// Deprecated: This does not correspond to an actual resource anymore but is
 	// still used when checking access to the new configuration resources, as an
