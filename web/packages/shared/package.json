@@ -10,17 +10,11 @@
     "directory": "packages/shared"
   },
   "dependencies": {
-    "@codemirror/lang-sql": "^6.5.2",
-    "@nivo/bar": "^0.83.0",
     "@react-spring/web": "^9.7.2",
-    "@uiw/codemirror-theme-dracula": "^4.21.9",
-    "@uiw/react-codemirror": "^4.21.9",
     "@use-gesture/react": "^10.2.27",
     "ace-builds": "1.4.6",
     "create-react-class": "^15.6.3",
     "cross-env": "5.0.5",
-    "d3-time-format": "^4.1.0",
-    "d3-scale": "^4.0.2",
     "date-fns": "^2.28.0",
     "dompurify": "^3.0.1",
     "highlight.js": "^11.7.0",
