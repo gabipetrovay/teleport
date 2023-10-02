@@ -78,10 +78,10 @@ func MsgFields(reqID string, reqData pd.AccessRequestData, clusterName string, w
 	if len(reqData.User) > 0 {
 		msgFieldToBuilder(&builder, "User", reqData.User)
 	}
-	if reqData.Roles != nil {
+	if len(reqData.Roles) > 0 {
 		msgFieldToBuilder(&builder, "Role(s)", strings.Join(reqData.Roles, ","))
 	}
-	if len(reqData.Resources) != 0 {
+	if len(reqData.Resources) > 0 {
 		msgFieldToBuilder(&builder, "Resource(s)", strings.Join(reqData.Resources, ","))
 	}
 	if reqData.RequestReason != "" {
