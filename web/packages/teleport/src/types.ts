@@ -156,6 +156,7 @@ export interface FeatureFlags {
   locks: boolean;
   newLocks: boolean;
   assist: boolean;
+  accessMonitoring: boolean;
   // Whether or not the management section should be available.
   managementSection: boolean;
 }
