@@ -133,21 +133,16 @@ func ResourceIDsFromStrings(resourceIDStrs []string) ([]ResourceID, error) {
 	return resourceIDs, nil
 }
 
-func ResourceIDsToStrings(ids []ResourceID) []string {
-	// Marshal each ID to a string using the custom helper.
-	var idStrings []string
-	for _, id := range ids {
-		idStrings = append(idStrings, ResourceIDToString(id))
-	}
-	return idStrings
-}
-
 // ResourceIDsToString marshals a list of ResourceIDs to a string.
 func ResourceIDsToString(ids []ResourceID) (string, error) {
 	if len(ids) == 0 {
 		return "", nil
 	}
-	idStrings := ResourceIDsToStrings(ids)
+	// Marshal each ID to a string using the custom helper.
+	var idStrings []string
+	for _, id := range ids {
+		idStrings = append(idStrings, ResourceIDToString(id))
+	}
 	// Marshal the entire list of strings as JSON (should properly handle any
 	// IDs containing commas or quotes).
 	bytes, err := json.Marshal(idStrings)
