@@ -16,11 +16,14 @@
 
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { Box, ButtonSecondary, Link, Text } from 'design';
+import { Box, ButtonSecondary, Flex, Indicator, Link, Text } from 'design';
+import { Danger } from 'design/Alert';
 import * as Icons from 'design/Icon';
+import { FetchStatus } from 'design/DataTable/types';
 import FieldInput from 'shared/components/FieldInput';
 import Validation, { Validator } from 'shared/components/Validation';
 import useAttempt from 'shared/hooks/useAttemptNext';
+import { getErrMessage } from 'shared/utils/errorType';
 
 import { TextSelectCopyMulti } from 'teleport/components/TextSelectCopy';
 import { usePingTeleport } from 'teleport/Discover/Shared/PingTeleportContext';
@@ -32,6 +35,7 @@ import {
 import {
   AwsOidcDeployServiceResponse,
   integrationService,
+  SecurityGroup,
 } from 'teleport/services/integrations';
 import { useDiscover, DbMeta } from 'teleport/Discover/useDiscover';
 import {
@@ -50,6 +54,7 @@ import {
   DiscoverLabel,
   AlternateInstructionButton,
   Mark,
+  SecurityGroupPicker,
 } from '../../../Shared';
 
 import { DeployServiceProp } from '../DeployService';
@@ -67,6 +72,10 @@ export function AutoDeploy({ toggleDeployMethod }: DeployServiceProp) {
   const [deploySvcResp, setDeploySvcResp] =
     useState<AwsOidcDeployServiceResponse>();
   const [deployFinished, setDeployFinished] = useState(false);
+
+  const [selectedSecurityGroups, setSelectedSecurityGroups] = useState<
+    string[]
+  >([]);
 
   const hasDbLabels = agentMeta?.agentMatcherLabels?.length;
   const dbLabels = hasDbLabels ? agentMeta.agentMatcherLabels : [];
@@ -101,6 +110,7 @@ export function AutoDeploy({ toggleDeployMethod }: DeployServiceProp) {
         subnetIds: dbMeta.selectedAwsRdsDb?.subnets,
         taskRoleArn,
         databaseAgentMatcherLabels: labels,
+        securityGroups: selectedSecurityGroups,
       })
       // The user is still technically in the "processing"
       // state, because after this call succeeds, we will
@@ -171,7 +181,7 @@ export function AutoDeploy({ toggleDeployMethod }: DeployServiceProp) {
             {/* step two */}
             <StyledBox mb={5}>
               <Text bold>Step 2</Text>
-              <Box mb={4}>
+              <Box>
                 <Labels
                   labels={labels}
                   setLabels={setLabels}
@@ -182,11 +192,22 @@ export function AutoDeploy({ toggleDeployMethod }: DeployServiceProp) {
                   region={dbMeta.selectedAwsRdsDb?.region}
                 />
               </Box>
+            </StyledBox>
+
+            {/* step three */}
+            <StyledBox mb={5}>
+              <SelectSecurityGroups
+                selectedSecurityGroups={selectedSecurityGroups}
+                setSelectedSecurityGroups={setSelectedSecurityGroups}
+                dbMeta={dbMeta}
+                emitErrorEvent={emitErrorEvent}
+              />
               <ButtonSecondary
                 width="215px"
                 type="submit"
                 onClick={() => handleDeploy(validator)}
                 disabled={attempt.status === 'processing'}
+                mt={4}
                 mb={2}
               >
                 Deploy Teleport Service
@@ -212,7 +233,7 @@ export function AutoDeploy({ toggleDeployMethod }: DeployServiceProp) {
               )}
             </StyledBox>
 
-            {/* step three */}
+            {/* step four */}
             {isDeploying && (
               <DeployHints
                 deployFinished={handleDeployFinished}
@@ -347,6 +368,111 @@ const CreateAccessRole = ({
         </>
       )}
     </StyledBox>
+  );
+};
+
+type TableData = {
+  items: SecurityGroup[];
+  nextToken?: string;
+  fetchStatus: FetchStatus;
+};
+
+const SelectSecurityGroups = ({
+  selectedSecurityGroups,
+  setSelectedSecurityGroups,
+  dbMeta,
+  emitErrorEvent,
+}: {
+  selectedSecurityGroups: string[];
+  setSelectedSecurityGroups(sg: string[]): void;
+  dbMeta: DbMeta;
+  emitErrorEvent(err: string): void;
+}) => {
+  const [sgTableData, setSgTableData] = useState<TableData>({
+    items: [],
+    nextToken: '',
+    fetchStatus: 'disabled',
+  });
+
+  const {
+    attempt: fetchSecurityGroupsAttempt,
+    setAttempt: setFetchSecurityGroupsAttempt,
+  } = useAttempt('');
+
+  function onSelectSecurityGroup(
+    sg: SecurityGroup,
+    e: React.ChangeEvent<HTMLInputElement>
+  ) {
+    if (e.target.checked) {
+      return setSelectedSecurityGroups([...selectedSecurityGroups, sg.id]);
+    } else {
+      setSelectedSecurityGroups(
+        selectedSecurityGroups.filter(id => id !== sg.id)
+      );
+    }
+  }
+
+  async function fetchSecurityGroups() {
+    const integration = dbMeta.integration;
+    const selectedDb = dbMeta.selectedAwsRdsDb;
+
+    setFetchSecurityGroupsAttempt({ status: 'processing' });
+    try {
+      const { securityGroups, nextToken } =
+        await integrationService.fetchSecurityGroups(integration.name, {
+          vpcId: selectedDb.vpcId,
+          region: selectedDb.region,
+          nextToken: sgTableData.nextToken,
+        });
+
+      setFetchSecurityGroupsAttempt({ status: 'success' });
+      setSgTableData({
+        nextToken: nextToken,
+        fetchStatus: nextToken ? '' : 'disabled',
+        items: [...sgTableData.items, ...securityGroups],
+      });
+    } catch (err) {
+      const errMsg = getErrMessage(err);
+      setFetchSecurityGroupsAttempt({ status: 'failed', statusText: errMsg });
+      emitErrorEvent(`fetch security groups error: ${errMsg}`);
+    }
+  }
+
+  useEffect(() => {
+    fetchSecurityGroups();
+  }, []);
+
+  return (
+    <>
+      <Text bold>Step 3</Text>
+      <Text bold>Optionally Select Security Groups</Text>
+      <Text mb={2}>
+        Select security groups to assign to the Fargate service that will be
+        running the database access agent. The security groups you pick must
+        allow outbound connectivity to this Teleport cluster. If you don't
+        select any security groups, the default one for the VPC will be used.
+      </Text>
+      {fetchSecurityGroupsAttempt.status === 'failed' && (
+        <Danger>{fetchSecurityGroupsAttempt.statusText}</Danger>
+      )}
+      {fetchSecurityGroupsAttempt.status === 'processing' && (
+        <Flex width="904px" justifyContent="center" mt={3}>
+          <Indicator />
+        </Flex>
+      )}
+      {fetchSecurityGroupsAttempt.status === 'success' && (
+        <Box mt={3}>
+          <SecurityGroupPicker
+            items={sgTableData.items}
+            attempt={fetchSecurityGroupsAttempt}
+            fetchNextPage={() => fetchSecurityGroups()}
+            fetchStatus={sgTableData.fetchStatus}
+            onSelectSecurityGroup={onSelectSecurityGroup}
+            selectedSecurityGroups={selectedSecurityGroups}
+          />
+        </Box>
+      )}
+    </>
   );
 };
 
