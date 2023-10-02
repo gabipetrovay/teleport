@@ -852,6 +852,10 @@ func (l *Backend) ConditionalDelete(ctx context.Context, key []byte, revision st
 		return trace.BadParameter("missing parameter key")
 	}
 
+	if revision == backend.BlankRevision {
+		revision = ""
+	}
+
 	return l.inTransaction(ctx, func(tx *sql.Tx) error {
 		now := l.clock.Now().UTC()
 		stmt, err := tx.PrepareContext(ctx, "DELETE FROM kv WHERE key = ? AND revision = ? AND (expires IS NULL OR expires > ?)")

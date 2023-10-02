@@ -601,6 +601,9 @@ func (b *Backend) ConditionalDelete(ctx context.Context, key []byte, rev string)
 	if err != nil {
 		return trace.Wrap(err)
 	}
+	if rev == backend.BlankRevision {
+		rev = ""
+	}
 	input := dynamodb.DeleteItemInput{Key: av, TableName: aws.String(b.TableName)}
 	input.SetConditionExpression("Revision = :rev")
 	input.SetExpressionAttributeValues(map[string]*dynamodb.AttributeValue{":rev": {S: aws.String(rev)}})

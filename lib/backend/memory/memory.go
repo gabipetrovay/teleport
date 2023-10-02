@@ -392,6 +392,9 @@ func (m *Memory) ConditionalDelete(ctx context.Context, key []byte, rev string) 
 	if len(key) == 0 {
 		return trace.BadParameter("missing parameter key")
 	}
+	if rev == backend.BlankRevision {
+		rev = ""
+	}
 	m.Lock()
 	defer m.Unlock()
 	m.removeExpired()
