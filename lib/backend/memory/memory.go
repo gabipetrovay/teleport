@@ -193,6 +193,9 @@ func (m *Memory) Get(ctx context.Context, key []byte) (*backend.Item, error) {
 	if !found {
 		return nil, trace.NotFound("key %q is not found", string(key))
 	}
+	if i.Revision == "" {
+		i.Revision = backend.BlankRevision
+	}
 	return &i.Item, nil
 }
 
@@ -415,6 +418,9 @@ func (m *Memory) ConditionalUpdate(ctx context.Context, i backend.Item) (*backen
 	if len(i.Key) == 0 {
 		return nil, trace.BadParameter("missing parameter key")
 	}
+	if i.Revision == backend.BlankRevision {
+		i.Revision = ""
+	}
 	m.Lock()
 	defer m.Unlock()
 	m.removeExpired()
@@ -454,6 +460,10 @@ func (m *Memory) generateID() int64 {
 func (m *Memory) getRange(ctx context.Context, startKey, endKey []byte, limit int) backend.GetResult {
 	var res backend.GetResult
 	m.tree.AscendRange(&btreeItem{Item: backend.Item{Key: startKey}}, &btreeItem{Item: backend.Item{Key: endKey}}, func(item *btreeItem) bool {
+		if item.Revision == "" {
+			item.Revision = backend.BlankRevision
+		}
+
 		res.Items = append(res.Items, item.Item)
 		if limit > 0 && len(res.Items) >= limit {
 			return false

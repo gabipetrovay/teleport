@@ -588,6 +588,10 @@ func (l *Backend) Get(ctx context.Context, key []byte) (*backend.Item, error) {
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
+
+	if item.Revision == "" {
+		item.Revision = backend.BlankRevision
+	}
 	return &item, nil
 }
 
@@ -646,6 +650,9 @@ func (l *Backend) GetRange(ctx context.Context, startKey []byte, endKey []byte, 
 				return trace.Wrap(err)
 			}
 			i.Expires = expires.Time
+			if i.Revision == "" {
+				i.Revision = backend.BlankRevision
+			}
 			result.Items = append(result.Items, i)
 		}
 		return nil
@@ -795,6 +802,10 @@ func (l *Backend) ConditionalUpdate(ctx context.Context, i backend.Item) (*backe
 		return nil, trace.BadParameter("missing parameter key")
 	}
 
+	if i.Revision == backend.BlankRevision {
+		i.Revision = ""
+	}
+
 	rev := backend.CreateRevision()
 	err := l.inTransaction(ctx, func(tx *sql.Tx) error {
 		now := l.clock.Now().UTC()
@@ -822,7 +833,7 @@ func (l *Backend) ConditionalUpdate(ctx context.Context, i backend.Item) (*backe
 			}
 			defer stmt.Close()
 
-			if _, err := stmt.ExecContext(ctx, types.OpPut, now, string(i.Key), id(now), expires(i.Expires), i.Value, i.Revision); err != nil {
+			if _, err := stmt.ExecContext(ctx, types.OpPut, now, string(i.Key), id(now), expires(i.Expires), i.Value, rev); err != nil {
 				return trace.Wrap(err)
 			}
 		}
