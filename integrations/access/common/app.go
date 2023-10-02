@@ -22,6 +22,7 @@ import (
 
 	"github.com/gravitational/trace"
 
+	"github.com/gravitational/teleport/api/accessrequest"
 	"github.com/gravitational/teleport/api/client/proto"
 	"github.com/gravitational/teleport/api/types"
 	"github.com/gravitational/teleport/integrations/access/common/teleport"
@@ -242,15 +243,21 @@ func (a *BaseApp) onPendingRequest(ctx context.Context, req types.AccessRequest)
 	log := logger.Get(ctx)
 
 	reqID := req.GetName()
+
+	resourceNames, err := a.getResourceNames(ctx, req)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
 	reqData := pd.AccessRequestData{
 		User:              req.GetUser(),
 		Roles:             req.GetRoles(),
 		RequestReason:     req.GetRequestReason(),
 		SystemAnnotations: req.GetSystemAnnotations(),
-		Resources:         types.ResourceIDsToStrings(req.GetRequestedResourceIDs()),
+		Resources:         resourceNames,
 	}
 
-	_, err := a.pluginData.Create(ctx, reqID, GenericPluginData{AccessRequestData: reqData})
+	_, err = a.pluginData.Create(ctx, reqID, GenericPluginData{AccessRequestData: reqData})
 	switch {
 	case err == nil:
 		// This is a new access-request, we have to broadcast it first.
@@ -479,4 +486,28 @@ func (a *BaseApp) updateMessages(ctx context.Context, reqID string, tag pd.Resol
 	log.Infof("Successfully marked request as %s in all messages", tag)
 
 	return nil
+}
+
+func (a *BaseApp) getResourceNames(ctx context.Context, req types.AccessRequest) ([]string, error) {
+	resourceNames := make([]string, 0, len(req.GetRequestedResourceIDs()))
+	resourcesByCluster := accessrequest.GetResourceIDsByCluster(req)
+
+	for cluster, resources := range resourcesByCluster {
+		resourceDetails, err := accessrequest.GetResourceDetails(ctx, cluster, a.apiClient, resources)
+		if err != nil {
+			return nil, trace.Wrap(err)
+		}
+
+		for _, resource := range resources {
+			resourceID := types.ResourceIDToString(resource)
+			var resourceName string
+			if details, ok := resourceDetails[resourceID]; ok && details.FriendlyName != "" {
+				resourceName = details.FriendlyName
+			} else {
+				resourceName = resourceID
+			}
+			resourceNames = append(resourceNames, resourceName)
+		}
+	}
+	return resourceNames, nil
 }

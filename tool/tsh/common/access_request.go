@@ -28,6 +28,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/gravitational/teleport"
+	"github.com/gravitational/teleport/api/accessrequest"
 	"github.com/gravitational/teleport/api/client"
 	"github.com/gravitational/teleport/api/client/proto"
 	kubeproto "github.com/gravitational/teleport/api/gen/proto/go/teleport/kube/v1"
@@ -434,7 +435,7 @@ func onRequestSearch(cf *CLIConf) error {
 		authClient := proxyClient.CurrentCluster()
 
 		req := proto.ListResourcesRequest{
-			ResourceType:        services.MapResourceKindToListResourcesType(cf.ResourceKind),
+			ResourceType:        accessrequest.MapResourceKindToListResourcesType(cf.ResourceKind),
 			Labels:              tc.Labels,
 			PredicateExpression: cf.PredicateExpression,
 			SearchKeywords:      tc.SearchKeywords,
@@ -446,7 +447,7 @@ func onRequestSearch(cf *CLIConf) error {
 			return trace.Wrap(err)
 		}
 		for _, result := range results {
-			leafResources, err := services.MapListResourcesResultToLeafResource(result, cf.ResourceKind)
+			leafResources, err := accessrequest.MapListResourcesResultToLeafResource(result, cf.ResourceKind)
 			if err != nil {
 				return trace.Wrap(err)
 			}
