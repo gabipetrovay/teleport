@@ -1377,7 +1377,7 @@ func adminCreds() (*int, *int, error) {
 // When configured to store session recordings in external storage, this will be an API client for
 // cloud-provider storage. Otherwise a local file-based handler is used which stores the recordings
 // on disk.
-func initAuthUploadHandler(ctx context.Context, auditConfig types.ClusterAuditConfig, dataDir string) (events.MultipartHandler, error) {
+func initAuthUploadHandler(ctx context.Context, auditConfig types.ClusterAuditConfig, dataDir string, externalCloudAudit *ExternalCloudAuditConfigurator) (events.MultipartHandler, error) {
 	if !auditConfig.ShouldUploadSessions() {
 		recordsDir := filepath.Join(dataDir, events.RecordsDir)
 		if err := os.MkdirAll(recordsDir, teleport.SharedDirMode); err != nil {
@@ -1408,10 +1408,23 @@ func initAuthUploadHandler(ctx context.Context, auditConfig types.ClusterAuditCo
 		}
 		return handler, nil
 	case teleport.SchemeS3:
-		config := s3sessions.Config{UseFIPSEndpoint: auditConfig.GetUseFIPSEndpoint()}
-
-		if err := config.SetFromURL(uri, auditConfig.Region()); err != nil {
-			return nil, trace.Wrap(err)
+		var config s3sessions.Config
+		if externalCloudAudit == nil {
+			config = s3sessions.Config{UseFIPSEndpoint: auditConfig.GetUseFIPSEndpoint()}
+			if err := config.SetFromURL(uri, auditConfig.Region()); err != nil {
+				return nil, trace.Wrap(err)
+			}
+		} else {
+			uri, err := apiutils.ParseSessionsURI(externalCloudAudit.GetExternalAuditConfig().SessionsRecordingsURI)
+			if err != nil {
+				return nil, trace.Wrap(err)
+			}
+			config = s3sessions.Config{
+				Credentials: externalCloudAudit.CredentialsV1(),
+			}
+			if err := config.SetFromURL(uri, auditConfig.Region()); err != nil {
+				return nil, trace.Wrap(err)
+			}
 		}
 
 		handler, err := s3sessions.NewHandler(ctx, config)
@@ -1603,6 +1616,10 @@ func (process *TeleportProcess) initAuthService() error {
 	var emitter apievents.Emitter
 	var streamer events.Streamer
 	var uploadHandler events.MultipartHandler
+
+	// TODO(tobiaszheller): only do if auth.Audit is enabled.
+	externalCloudAuditConfiguratior := NewExternalCloudAuditConfigurator(process.ExitContext(), b)
+
 	// create the audit log, which will be consuming (and recording) all events
 	// and recording all sessions.
 	if cfg.Auth.NoAudit {
@@ -1626,9 +1643,8 @@ func (process *TeleportProcess) initAuthService() error {
 		if cfg.FIPS {
 			cfg.Auth.AuditConfig.SetUseFIPSEndpoint(types.ClusterAuditConfigSpecV2_FIPS_ENABLED)
 		}
-
 		uploadHandler, err = initAuthUploadHandler(
-			process.ExitContext(), cfg.Auth.AuditConfig, filepath.Join(cfg.DataDir, teleport.LogsDir))
+			process.ExitContext(), cfg.Auth.AuditConfig, filepath.Join(cfg.DataDir, teleport.LogsDir), externalCloudAuditConfiguratior)
 		if err != nil {
 			if !trace.IsNotFound(err) {
 				return trace.Wrap(err)
@@ -1640,6 +1656,7 @@ func (process *TeleportProcess) initAuthService() error {
 		if err != nil {
 			return trace.Wrap(err)
 		}
+
 		// initialize external loggers.  may return (nil, nil) if no
 		// external loggers have been defined.
 		externalLog, err := initAuthExternalAuditLog(process.ExitContext(), cfg.Auth.AuditConfig, process.backend, process.TracingProvider)
@@ -1826,6 +1843,12 @@ func (process *TeleportProcess) initAuthService() error {
 
 	authServer.SetUnifiedResourcesCache(unifiedResourcesCache)
 
+	if externalCloudAuditConfiguratior != nil {
+		externalCloudAuditConfiguratior.SetAWSOIDCGenerator(authServer)
+		log.Infof("TOBYOB Starting externalAuditProcessor")
+		go externalCloudAuditConfiguratior.Start(process.ExitContext())
+	}
+
 	if embedderClient != nil {
 		log.Debugf("Starting embedding watcher")
 		embeddingProcessor := ai.NewEmbeddingProcessor(&ai.EmbeddingProcessorConfig{
@@ -1858,6 +1881,19 @@ func (process *TeleportProcess) initAuthService() error {
 			log.Debugf("Starting embedding processor")
 			return embeddingProcessor.Run(process.GracefulExitContext(), embeddingInitialDelay, embeddingPeriod)
 		})
+	}
+	clusterExternalAuditWatcher, err := local.NewClusterExternalAuditWatcher(process.ExitContext(), local.ClusterExternalCloudAuditWatcherConfig{
+		Backend: b,
+		OnChange: func() {
+			// On change of external audit, trigger teleport reload.
+			process.BroadcastEvent(Event{Name: TeleportReloadEvent})
+		},
+	})
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	if err := clusterExternalAuditWatcher.WaitInit(process.ExitContext()); err != nil {
+		return trace.Wrap(err)
 	}
 
 	headlessAuthenticationWatcher, err := local.NewHeadlessAuthenticationWatcher(process.ExitContext(), local.HeadlessAuthenticationWatcherConfig{

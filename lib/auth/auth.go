@@ -85,6 +85,7 @@ import (
 	"github.com/gravitational/teleport/lib/githubactions"
 	"github.com/gravitational/teleport/lib/gitlab"
 	"github.com/gravitational/teleport/lib/inventory"
+	"github.com/gravitational/teleport/lib/jwt"
 	kubeutils "github.com/gravitational/teleport/lib/kube/utils"
 	"github.com/gravitational/teleport/lib/kubernetestoken"
 	"github.com/gravitational/teleport/lib/limiter"
@@ -907,6 +908,46 @@ func (a *Server) syncUpgradeWindowStartHour(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (a *Server) GenerateAWSOIDCTokenForExternalAudit(ctx context.Context) (string, error) {
+	clusterName, err := a.GetDomainName()
+	if err != nil {
+		return "", trace.Wrap(err)
+	}
+
+	ca, err := a.GetCertAuthority(ctx, types.CertAuthID{
+		Type:       types.OIDCIdPCA,
+		DomainName: clusterName,
+	}, true)
+	if err != nil {
+		return "", trace.Wrap(err)
+	}
+
+	// Extract the JWT signing key and sign the claims.
+	signer, err := a.GetKeyStore().GetJWTSigner(ctx, ca)
+	if err != nil {
+		return "", trace.Wrap(err)
+	}
+
+	privateKey, err := services.GetJWTSigner(signer, ca.GetClusterName(), a.clock)
+	if err != nil {
+		return "", trace.Wrap(err)
+	}
+
+	token, err := privateKey.SignAWSOIDC(jwt.SignParams{
+		// TODO(tobiaszheller): use hostUUID for auth,.
+		Username: "system:auth",
+		// TODO(tobiaszheller): use new audience
+		Audience: types.IntegrationAWSOIDCAudience,
+		Subject:  "system:auth",
+		Issuer:   "https://" + clusterName,
+		Expires:  a.clock.Now().Add(time.Hour),
+	})
+	if err != nil {
+		return "", trace.Wrap(err)
+	}
+	return token, nil
 }
 
 func (a *Server) periodicSyncUpgradeWindowStartHour() {
