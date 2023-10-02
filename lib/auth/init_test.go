@@ -913,13 +913,13 @@ func newMockRoleManager(t *testing.T) *mockRoleManager {
 }
 
 // CreateRole creates a role.
-func (m *mockRoleManager) CreateRole(ctx context.Context, role types.Role) error {
-	type delegateFn = func(context.Context, types.Role) error
+func (m *mockRoleManager) CreateRole(ctx context.Context, role types.Role) (types.Role, error) {
+	type delegateFn = func(context.Context, types.Role) (types.Role, error)
 	args := m.Called(ctx, role)
 	if delegate, ok := args[0].(delegateFn); ok {
 		return delegate(ctx, role)
 	}
-	return args.Error(0)
+	return nil, args.Error(0)
 }
 
 func (m *mockRoleManager) GetRole(ctx context.Context, name string) (types.Role, error) {
