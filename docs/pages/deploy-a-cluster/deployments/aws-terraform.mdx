@@ -152,7 +152,7 @@ cluster from scratch, so choose carefully.
 
 Setting `export TF_VAR_ami_name="gravitational-teleport-ami-ent-(=teleport.version=)"`
 
-Gravitational automatically builds and publishes Teleport Community Edition, Enterprise, and Enterprise FIPS 140-2 
+Gravitational automatically builds and publishes Teleport Community Edition, Enterprise, and Enterprise FIPS 140-2
 AMIs when we release a new version of Teleport. The AMI names follow the format: `gravitational-teleport-ami-<type>-<version>`
 where `<type>` is either `oss` or `ent` (Enterprise) and `version` is the version of Teleport e.g. `(=teleport.version=)`.
 
@@ -192,7 +192,7 @@ Set `export TF_VAR_license_path="/home/user/license.pem"`
 This license will be uploaded to AWS SSM and automatically downloaded to Teleport auth nodes in order to enable
 Teleport Enterprise functionality.
 
-(Teleport Community Edition users can provide any valid local file path here. It isn't used by the Teleport Auth 
+(Teleport Community Edition users can provide any valid local file path here. It isn't used by the Teleport Auth
 Service in a Teleport Community Edition installs.)
 
 ### route53\_zone
@@ -226,8 +226,8 @@ This must be a subdomain of the domain you chose for [`route53_zone`](#route53\_
 
 Setting `export TF_VAR_add_wildcard_route53_record="true"`
 
-Used to enable the Teleport Application Service for subdomains of the Teleport Proxy Service's public web address. A wildcard entry for the public-facing 
-domain will be set in Route 53, e.g., `*.teleport.example.com`, to point to the Teleport load balancer. For ACM a wildcard 
+Used to enable the Teleport Application Service for subdomains of the Teleport Proxy Service's public web address. A wildcard entry for the public-facing
+domain will be set in Route 53, e.g., `*.teleport.example.com`, to point to the Teleport load balancer. For ACM a wildcard
 certificate is included if this is set to `true`. Let's Encrypt automatically includes a wildcard subdomain in certificates that it issues.
 
 ### enable\_mongodb\_listener
@@ -290,6 +290,22 @@ Terraform use it by running this command before `terraform apply`:
 ```code
 $ terraform import aws_acm_certificate.cert <certificate_arn>
 ```
+
+### teleport_auth_type
+
+```code
+$ export TF_VAR_teleport_auth_type="local"
+```
+
+This value can be used to change the default authentication type used for the Teleport cluster. This is useful for persisting a
+default authentication type across AMI upgrades when you have a SAML, OIDC or Github connector configured in DynamoDB.
+The default is "local".
+
+- Teleport Community Edition supports `local` or `github`
+- Teleport Enterprise Edition supports `local`, `github`, `oidc` or `saml`
+- Teleport Enterprise FIPS deployments have local authentication disabled, so should use `github`, `oidc` or `saml`
+
+See the [Teleport authentication reference](../../reference/authentication.mdx) for more information.
 
 ## Reference deployment defaults
 
