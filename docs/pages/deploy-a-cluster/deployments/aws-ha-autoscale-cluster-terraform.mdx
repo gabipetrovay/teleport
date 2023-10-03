@@ -140,8 +140,8 @@ Things you will need to decide on:
 $ export TF_VAR_region="<Var name="us-west-2" />"
 ```
 
-The AWS region to run in. You should pick from the supported list as detailed in the [README](https://github.com/gravitational/teleport/blob/branch/v(=teleport.major_version=)/examples/aws/terraform/ha-autoscale-cluster/README.md). These are regions which support [DynamoDB encryption
-at rest](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/EncryptionAtRest.html).
+The AWS region to run in. You should pick from the supported list as detailed in the [README](https://github.com/gravitational/teleport/blob/branch/v(=teleport.major_version=)/examples/aws/terraform/ha-autoscale-cluster/README.md).
+These are regions which support [DynamoDB encryption at rest](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/EncryptionAtRest.html).
 
 ### cluster_name
 
@@ -208,9 +208,10 @@ $ export TF_VAR_license_path="/home/user/license.pem"
 ```
 
 This license will be uploaded to AWS SSM and automatically downloaded to Teleport Auth Service instances in order to enable
-Teleport Enterprise/Pro functionality.
+Teleport Enterprise functionality.
 
-(OSS users can provide any valid local file path here - it isn't used by the Teleport Auth Service in a Teleport OSS install)
+(OSS users can run `touch /tmp/license.pem` locally to create an empty file, and then provide the path '/tmp/license.pem'
+here. The license file isn't used in a Teleport OSS install)
 
 ### route53\_zone
 
@@ -513,7 +514,7 @@ $ terraform apply
 
 Entering `yes` here will start the Terraform deployment. It takes around 8-10 minutes to deploy in full.
 
-### Destroy/shutdown a Terraform deployment
+### Destroy/shut down a Terraform deployment
 
 If you need to tear down a running deployment for any reason, you can run `terraform destroy`.
 
@@ -616,7 +617,7 @@ You can [download the Teleport package containing the `tsh` client from here](ht
 <Tabs>
   <TabItem scope={["oss"]} label="Teleport Community Edition">
   ```code
-  # When logging in with tsh, the https:// at the beginning of thh URL is not needed
+  # When logging in with tsh, the https:// at the beginning of the URL is not needed
   $ export PROXY_ADDRESS=$(terraform output -raw cluster_web_address | sed 's_https://__')
   $ tsh login --proxy=${PROXY_ADDRESS} --user=teleport-admin
   # Enter password for Teleport user teleport-admin:
@@ -625,9 +626,9 @@ You can [download the Teleport package containing the `tsh` client from here](ht
   # > Profile URL:  https://teleport.example.com:443
   #  Logged in as: teleport-admin
   #  Cluster:      example-cluster
-  #  Roles:        editor,access
+  #  Roles:        editor, access
   #  Logins:       root
-  #  Valid until:  2020-03-06 22:07:11 -0400 AST [valid for 12h0m0s]
+  #  Valid until:  2023-10-06 22:07:11 -0400 AST [valid for 12h0m0s]
   #  Extensions:   permit-agent-forwarding, permit-port-forwarding, permit-pty
 
   $ tsh ls
@@ -641,7 +642,7 @@ You can [download the Teleport package containing the `tsh` client from here](ht
   </TabItem>
   <TabItem scope={["enterprise", "cloud"]} label="Commercial">
   ```code
-  # When logging in with tsh, the https:// at the beginning of thh URL is not needed
+  # When logging in with tsh, the https:// at the beginning of the URL is not needed
   $ export PROXY_ADDRESS=$(terraform output -raw cluster_web_address | sed 's_https://__')
   $ tsh login --proxy=${PROXY_ADDRESS} --user=teleport-admin
   # Enter password for Teleport user teleport-admin:
@@ -650,9 +651,9 @@ You can [download the Teleport package containing the `tsh` client from here](ht
   # > Profile URL:  https://teleport.example.com:443
   #  Logged in as: teleport-admin
   #  Cluster:      example-cluster
-  #  Roles:        editor,access,reviewer
+  #  Roles:        editor, access, reviewer
   #  Logins:       root
-  #  Valid until:  2020-03-06 22:07:11 -0400 AST [valid for 12h0m0s]
+  #  Valid until:  2023-10-06 22:07:11 -0400 AST [valid for 12h0m0s]
   #  Extensions:   permit-agent-forwarding, permit-port-forwarding, permit-pty
 
   $ tsh ls
