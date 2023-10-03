@@ -22,7 +22,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/gravitational/teleport/api/accessrequest"
 	"github.com/gravitational/teleport/api/types"
 	"github.com/gravitational/teleport/lib/tlsca"
 	"github.com/gravitational/teleport/lib/utils/aws"
@@ -123,7 +122,7 @@ func MakeApp(app types.Application, c MakeAppsConfig) App {
 		ClusterID:    c.AppClusterName,
 		FQDN:         fqdn,
 		AWSConsole:   app.IsAWSConsole(),
-		FriendlyName: accessrequest.FriendlyName(app),
+		FriendlyName: types.FriendlyName(app),
 		UserGroups:   userGroupAndDescriptions,
 		SAMLApp:      false,
 	}
@@ -146,7 +145,7 @@ func MakeSAMLApp(app types.SAMLIdPServiceProvider, c MakeAppsConfig) App {
 		PublicAddr:   "",
 		Labels:       labels,
 		ClusterID:    c.AppClusterName,
-		FriendlyName: accessrequest.FriendlyName(app),
+		FriendlyName: types.FriendlyName(app),
 		SAMLApp:      true,
 	}
 
@@ -182,7 +181,7 @@ func MakeApps(c MakeAppsConfig) []App {
 				ClusterID:    c.AppClusterName,
 				FQDN:         fqdn,
 				AWSConsole:   app.IsAWSConsole(),
-				FriendlyName: accessrequest.FriendlyName(app),
+				FriendlyName: types.FriendlyName(app),
 				UserGroups:   userGroupAndDescriptions,
 				SAMLApp:      false,
 			}
@@ -202,7 +201,7 @@ func MakeApps(c MakeAppsConfig) []App {
 				PublicAddr:   appOrSP.GetPublicAddr(),
 				Labels:       labels,
 				ClusterID:    c.AppClusterName,
-				FriendlyName: accessrequest.FriendlyName(appOrSP),
+				FriendlyName: types.FriendlyName(appOrSP),
 				SAMLApp:      true,
 			}
 

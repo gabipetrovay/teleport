@@ -21,34 +21,35 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gravitational/teleport/api/client"
 	"github.com/gravitational/teleport/api/client/proto"
 	"github.com/gravitational/teleport/api/types"
 	"github.com/gravitational/trace"
 )
 
-// FriendlyName will return the friendly name for a resource if it has one. Otherwise, it
-// will return an empty string.
-func FriendlyName(resource types.ResourceWithLabels) string {
-	// Right now, only resources sourced from Okta and nodes have friendly names.
-	if resource.Origin() == types.OriginOkta {
-		return resource.GetMetadata().Description
-	}
-
-	if hn, ok := resource.(interface{ GetHostname() string }); ok {
-		return hn.GetHostname()
-	}
-
-	return ""
-}
-
-// ResourceLister is an interface which can list resources.
-type ResourceLister interface {
-	ListResources(ctx context.Context, req proto.ListResourcesRequest) (*types.ListResourcesResponse, error)
-}
-
 type ListResourcesRequestOption func(*proto.ListResourcesRequest)
 
-func GetResourceDetails(ctx context.Context, clusterName string, lister ResourceLister, ids []types.ResourceID) (map[string]types.ResourceDetails, error) {
+// GetResourcesWithFilters is a wrapper for client.GetResourcesWithFilters
+// that maps resource kinds to the resource types expected by ListResources.
+func GetResourcesWithFilters(ctx context.Context, clt client.ListResourcesClient, req proto.ListResourcesRequest, kind string) ([]types.ResourceWithLabels, error) {
+	req.ResourceType = mapResourceKindToListResourcesType(kind)
+	results, err := client.GetResourcesWithFilters(ctx, clt, req)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	resources := make([]types.ResourceWithLabels, 0, len(results))
+	for _, result := range results {
+		leafResource, err := mapListResourcesResultToLeafResource(result, kind)
+		if err != nil {
+			return nil, trace.Wrap(err)
+		}
+		resources = append(resources, leafResource)
+	}
+	return resources, nil
+}
+
+// GetResourceDetails gets extra details for a list of resources in a given cluster.
+func GetResourceDetails(ctx context.Context, clusterName string, lister client.ListResourcesClient, ids []types.ResourceID) (map[string]types.ResourceDetails, error) {
 	var resourceIDs []types.ResourceID
 	for _, resourceID := range ids {
 		// We're interested in hostname or friendly name details. These apply to
@@ -71,7 +72,7 @@ func GetResourceDetails(ctx context.Context, clusterName string, lister Resource
 
 	result := make(map[string]types.ResourceDetails)
 	for _, resource := range resources {
-		friendlyName := FriendlyName(resource)
+		friendlyName := types.FriendlyName(resource)
 
 		// No friendly name was found, so skip to the next resource.
 		if friendlyName == "" {
@@ -100,7 +101,8 @@ func GetResourceIDsByCluster(r types.AccessRequest) map[string][]types.ResourceI
 	return resourceIDsByCluster
 }
 
-func GetResourcesByResourceIDs(ctx context.Context, lister ResourceLister, resourceIDs []types.ResourceID, opts ...ListResourcesRequestOption) ([]types.ResourceWithLabels, error) {
+// GetResourcesByResourceID gets a list of resources by their resource IDs.
+func GetResourcesByResourceIDs(ctx context.Context, lister client.ListResourcesClient, resourceIDs []types.ResourceID, opts ...ListResourcesRequestOption) ([]types.ResourceWithLabels, error) {
 	resourceNamesByKind := make(map[string][]string)
 	for _, resourceID := range resourceIDs {
 		resourceNamesByKind[resourceID.Kind] = append(resourceNamesByKind[resourceID.Kind], resourceID.Name)
@@ -108,25 +110,17 @@ func GetResourcesByResourceIDs(ctx context.Context, lister ResourceLister, resou
 	var resources []types.ResourceWithLabels
 	for kind, resourceNames := range resourceNamesByKind {
 		req := proto.ListResourcesRequest{
-			ResourceType:        MapResourceKindToListResourcesType(kind),
 			PredicateExpression: anyNameMatcher(resourceNames),
 			Limit:               int32(len(resourceNames)),
 		}
 		for _, opt := range opts {
 			opt(&req)
 		}
-		resp, err := lister.ListResources(ctx, req)
+		resp, err := GetResourcesWithFilters(ctx, lister, req, kind)
 		if err != nil {
 			return nil, trace.Wrap(err)
 		}
-
-		for _, result := range resp.Resources {
-			leafResources, err := MapListResourcesResultToLeafResource(result, kind)
-			if err != nil {
-				return nil, trace.Wrap(err)
-			}
-			resources = append(resources, leafResources...)
-		}
+		resources = append(resources, resp...)
 	}
 	return resources, nil
 }
@@ -141,12 +135,12 @@ func anyNameMatcher(names []string) string {
 	return strings.Join(matchers, " || ")
 }
 
-// MapResourceKindToListResourcesType returns the value to use for ResourceType in a
+// mapResourceKindToListResourcesType returns the value to use for ResourceType in a
 // ListResourcesRequest based on the kind of resource you're searching for.
 // Necessary because some resource kinds don't support ListResources directly,
 // so you have to list the parent kind. Use MapListResourcesResultToLeafResource to map back
 // to the given kind.
-func MapResourceKindToListResourcesType(kind string) string {
+func mapResourceKindToListResourcesType(kind string) string {
 	switch kind {
 	case types.KindApp:
 		return types.KindAppServer
@@ -159,24 +153,24 @@ func MapResourceKindToListResourcesType(kind string) string {
 	}
 }
 
-// MapListResourcesResultToLeafResource is the inverse of
+// mapListResourcesResultToLeafResource is the inverse of
 // MapResourceKindToListResourcesType, after the ListResources call it maps the
 // result back to the kind we really want. `hint` should be the name of the
 // desired resource kind, used to disambiguate normal SSH nodes and kubernetes
 // services which are both returned as `types.Server`.
-func MapListResourcesResultToLeafResource(resource types.ResourceWithLabels, hint string) (types.ResourcesWithLabels, error) {
+func mapListResourcesResultToLeafResource(resource types.ResourceWithLabels, hint string) (types.ResourceWithLabels, error) {
 	switch r := resource.(type) {
 	case types.AppServer:
-		return types.ResourcesWithLabels{r.GetApp()}, nil
+		return r.GetApp(), nil
 	case types.KubeServer:
-		return types.ResourcesWithLabels{r.GetCluster()}, nil
+		return r.GetCluster(), nil
 	case types.DatabaseServer:
-		return types.ResourcesWithLabels{r.GetDatabase()}, nil
+		return r.GetDatabase(), nil
 	case types.Server:
 		if hint == types.KindKubernetesCluster {
 			return nil, trace.BadParameter("expected kubernetes server, got server")
 		}
 	default:
 	}
-	return types.ResourcesWithLabels{resource}, nil
+	return resource, nil
 }

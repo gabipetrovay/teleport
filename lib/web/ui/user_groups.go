@@ -17,7 +17,6 @@ limitations under the License.
 package ui
 
 import (
-	"github.com/gravitational/teleport/api/accessrequest"
 	"github.com/gravitational/teleport/api/types"
 )
 
@@ -54,7 +53,7 @@ func MakeUserGroups(userGroups []types.UserGroup, userGroupsToApps map[string]ty
 		for i, app := range apps {
 			appsAndFriendlyNames[i] = ApplicationAndFriendlyName{
 				Name:         app.GetName(),
-				FriendlyName: accessrequest.FriendlyName(app),
+				FriendlyName: types.FriendlyName(app),
 			}
 		}
 
@@ -62,7 +61,7 @@ func MakeUserGroups(userGroups []types.UserGroup, userGroupsToApps map[string]ty
 			Name:         userGroup.GetName(),
 			Description:  userGroup.GetMetadata().Description,
 			Labels:       uiLabels,
-			FriendlyName: accessrequest.FriendlyName(userGroup),
+			FriendlyName: types.FriendlyName(userGroup),
 			Applications: appsAndFriendlyNames,
 		})
 	}

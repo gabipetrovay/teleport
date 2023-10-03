@@ -435,23 +435,15 @@ func onRequestSearch(cf *CLIConf) error {
 		authClient := proxyClient.CurrentCluster()
 
 		req := proto.ListResourcesRequest{
-			ResourceType:        accessrequest.MapResourceKindToListResourcesType(cf.ResourceKind),
 			Labels:              tc.Labels,
 			PredicateExpression: cf.PredicateExpression,
 			SearchKeywords:      tc.SearchKeywords,
 			UseSearchAsRoles:    true,
 		}
 
-		results, err := client.GetResourcesWithFilters(cf.Context, authClient, req)
+		resources, err = accessrequest.GetResourcesWithFilters(cf.Context, authClient, req, cf.ResourceKind)
 		if err != nil {
 			return trace.Wrap(err)
-		}
-		for _, result := range results {
-			leafResources, err := accessrequest.MapListResourcesResultToLeafResource(result, cf.ResourceKind)
-			if err != nil {
-				return trace.Wrap(err)
-			}
-			resources = append(resources, leafResources...)
 		}
 		tableColumns = []string{"Name", "Hostname", "Labels", "Resource ID"}
 	}

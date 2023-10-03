@@ -44,7 +44,7 @@ func TestEncodePluginData(t *testing.T) {
 	assert.Len(t, dataMap, 8)
 	assert.Equal(t, "user-foo", dataMap["user"])
 	assert.Equal(t, "role-foo,role-bar", dataMap["roles"])
-	assert.Equal(t, "cluster-a/node/foo,cluster-a/node/bar", dataMap["resources"])
+	assert.Equal(t, `["cluster-a/node/foo","cluster-a/node/bar"]`, dataMap["resources"])
 	assert.Equal(t, "foo reason", dataMap["request_reason"])
 	assert.Equal(t, "3", dataMap["reviews_count"])
 	assert.Equal(t, "APPROVED", dataMap["resolution"])
@@ -56,7 +56,7 @@ func TestDecodePluginData(t *testing.T) {
 	pluginData, err := DecodePluginData(map[string]string{
 		"user":           "user-foo",
 		"roles":          "role-foo,role-bar",
-		"resources":      "cluster-a/node/foo,cluster-a/node/bar",
+		"resources":      `["cluster-a/node/foo","cluster-a/node/bar"]`,
 		"request_reason": "foo reason",
 		"reviews_count":  "3",
 		"resolution":     "APPROVED",

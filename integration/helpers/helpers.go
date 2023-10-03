@@ -34,8 +34,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh/agent"
 
-	"github.com/gravitational/teleport/api/accessrequest"
 	"github.com/gravitational/teleport/api/breaker"
+	apiclient "github.com/gravitational/teleport/api/client"
 	"github.com/gravitational/teleport/api/client/proto"
 	"github.com/gravitational/teleport/api/constants"
 	apidefaults "github.com/gravitational/teleport/api/defaults"
@@ -474,7 +474,7 @@ func MustCreateListener(t *testing.T) net.Listener {
 	return listener
 }
 
-func FindNodeWithLabel(t *testing.T, ctx context.Context, cl accessrequest.ResourceLister, key, value string) func() bool {
+func FindNodeWithLabel(t *testing.T, ctx context.Context, cl apiclient.ListResourcesClient, key, value string) func() bool {
 	t.Helper()
 	return func() bool {
 		servers, err := cl.ListResources(ctx, proto.ListResourcesRequest{

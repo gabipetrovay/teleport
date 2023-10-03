@@ -30,6 +30,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/gravitational/teleport/api/accessrequest"
+	"github.com/gravitational/teleport/api/client"
 	apidefaults "github.com/gravitational/teleport/api/defaults"
 	"github.com/gravitational/teleport/api/types"
 	apiutils "github.com/gravitational/teleport/api/utils"
@@ -723,7 +724,7 @@ func GetTraitMappings(cms []types.ClaimMapping) types.TraitMappingSet {
 type RequestValidatorGetter interface {
 	UserGetter
 	RoleGetter
-	accessrequest.ResourceLister
+	client.ListResourcesClient
 	GetRoles(ctx context.Context) ([]types.Role, error)
 	GetClusterName(opts ...MarshalOption) (types.ClusterName, error)
 }
@@ -1810,7 +1811,7 @@ func (m *RequestValidator) roleAllowsResource(
 }
 
 // TODO(atburke): Remove this once teleport.e reference is switched over
-func GetResourceDetails(ctx context.Context, clusterName string, lister accessrequest.ResourceLister, ids []types.ResourceID) (map[string]types.ResourceDetails, error) {
+func GetResourceDetails(ctx context.Context, clusterName string, lister client.ListResourcesClient, ids []types.ResourceID) (map[string]types.ResourceDetails, error) {
 	return accessrequest.GetResourceDetails(ctx, clusterName, lister, ids)
 }
 
