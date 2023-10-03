@@ -226,7 +226,7 @@ func TestLocalUserCanReissueCerts(t *testing.T) {
 					types.BotGenerationLabel: "0",
 				}
 				user.SetMetadata(meta)
-				err := srv.Auth().UpsertUser(user)
+				user, err = srv.Auth().UpsertUser(ctx, user)
 				require.NoError(t, err)
 			} else {
 				id = TestUser(user.GetName())
@@ -274,7 +274,7 @@ func TestSSOUserCanReissueCert(t *testing.T) {
 	user.SetCreatedBy(types.CreatedBy{
 		Connector: &types.ConnectorRef{Type: "oidc", ID: "google"},
 	})
-	err = srv.Auth().UpdateUser(ctx, user)
+	user, err = srv.Auth().UpdateUser(ctx, user)
 	require.NoError(t, err)
 
 	client, err := srv.NewClient(TestUser(user.GetName()))
@@ -374,7 +374,7 @@ func TestInstaller(t *testing.T) {
 		},
 	}} {
 		user.SetRoles(tc.roles)
-		err = srv.Auth().UpsertUser(user)
+		user, err = srv.Auth().UpsertUser(ctx, user)
 		require.NoError(t, err)
 
 		client, err := srv.NewClient(TestUser(user.GetName()))
@@ -533,7 +533,7 @@ func TestGithubAuthRequest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			user.SetRoles(tt.roles)
-			err = srv.Auth().UpsertUser(user)
+			user, err = srv.Auth().UpsertUser(ctx, user)
 			require.NoError(t, err)
 
 			client, err := srv.NewClient(TestUser(user.GetName()))
@@ -817,7 +817,7 @@ func TestGenerateUserCertsWithRoleRequest(t *testing.T) {
 			if tt.userTraits != nil {
 				user.SetTraits(tt.userTraits)
 			}
-			err = srv.Auth().UpsertUser(user)
+			user, err = srv.Auth().UpsertUser(ctx, user)
 			require.NoError(t, err)
 
 			client, err := srv.NewClient(TestUser(user.GetName()))
@@ -915,7 +915,7 @@ func TestRoleRequestDenyReimpersonation(t *testing.T) {
 	user, err := CreateUser(srv.Auth(), "alice")
 	require.NoError(t, err)
 	user.AddRole(impersonatorRole.GetName())
-	err = srv.Auth().UpsertUser(user)
+	user, err = srv.Auth().UpsertUser(ctx, user)
 	require.NoError(t, err)
 
 	// Generate cert with a role request.
@@ -1382,7 +1382,7 @@ func benchmarkListNodes(
 		"group": {"users"},
 		"email": {"test@example.com"},
 	})
-	err = srv.Auth().UpsertUser(user)
+	user, err = srv.Auth().UpsertUser(ctx, user)
 	require.NoError(b, err)
 	identity := TestUser(user.GetName())
 	clt, err := srv.NewClient(identity)
@@ -1661,7 +1661,7 @@ func TestAPILockedOut(t *testing.T) {
 
 	// Prepare an operation requiring authorization.
 	testOp := func() error {
-		_, err := clt.GetUser(user.GetName(), false)
+		_, err := clt.GetUser(ctx, user.GetName(), false)
 		return err
 	}
 
@@ -1691,14 +1691,15 @@ func TestAPILockedOut(t *testing.T) {
 
 func serverWithAllowRules(t *testing.T, srv *TestAuthServer, allowRules []types.Rule) *ServerWithRoles {
 	username := "test-user"
+	ctx := context.Background()
 	_, role, err := CreateUserAndRoleWithoutRoles(srv.AuthServer, username, nil)
 	require.NoError(t, err)
 	role.SetRules(types.Allow, allowRules)
-	err = srv.AuthServer.UpsertRole(context.TODO(), role)
+	err = srv.AuthServer.UpsertRole(ctx, role)
 	require.NoError(t, err)
 
 	localUser := authz.LocalUser{Username: username, Identity: tlsca.Identity{Username: username}}
-	authContext, err := authz.ContextForLocalUser(localUser, srv.AuthServer, srv.ClusterName, true /* disableDeviceAuthz */)
+	authContext, err := authz.ContextForLocalUser(ctx, localUser, srv.AuthServer, srv.ClusterName, true /* disableDeviceAuthz */)
 	require.NoError(t, err)
 
 	return &ServerWithRoles{
@@ -3562,7 +3563,8 @@ func TestListResources_KindUserGroup(t *testing.T) {
 	user, err := types.NewUser("test-user")
 	require.NoError(t, err)
 	user.AddRole(role.GetName())
-	require.NoError(t, srv.AuthServer.UpsertUser(user))
+	user, err = srv.AuthServer.UpsertUser(ctx, user)
+	require.NoError(t, err)
 
 	// Create the admin context so that we can create all the user groups we need.
 	authContext, err := srv.Authorizer.Authorize(authz.ContextWithUser(ctx, TestBuiltin(types.RoleAdmin).I))
@@ -4106,7 +4108,7 @@ func TestListResources_WithRoles(t *testing.T) {
 				user.AddRole(role)
 			}
 
-			err = srv.Auth().UpsertUser(user)
+			user, err = srv.Auth().UpsertUser(ctx, user)
 			require.NoError(t, err)
 
 			for _, needTotal := range []bool{true, false} {
@@ -4488,7 +4490,7 @@ func benchmarkListUnifiedResources(
 		"group": {"users"},
 		"email": {"test@example.com"},
 	})
-	err = srv.Auth().UpsertUser(user)
+	user, err = srv.Auth().UpsertUser(ctx, user)
 	require.NoError(b, err)
 	identity := TestUser(user.GetName())
 	clt, err := srv.NewClient(identity)
@@ -4850,7 +4852,7 @@ func TestGetActiveSessionTrackers(t *testing.T) {
 			require.NoError(t, err)
 
 			user.AddRole(testCase.role.GetName())
-			err = srv.Auth().UpsertUser(user)
+			user, err = srv.Auth().UpsertUser(ctx, user)
 			require.NoError(t, err)
 
 			clt, err := srv.NewClient(TestUser(user.GetName()))
@@ -6248,11 +6250,12 @@ func TestCreateAccessRequest(t *testing.T) {
 	srv.Auth().CreateRole(ctx, searchRole)
 	srv.Auth().CreateRole(ctx, requestRole)
 
-	user, err := srv.Auth().GetUser(alice, true)
+	user, err := srv.Auth().GetUser(ctx, alice, true)
 	require.NoError(t, err)
 
 	user.AddRole(searchRole.GetName())
-	require.NoError(t, srv.Auth().UpsertUser(user))
+	user, err = srv.Auth().UpsertUser(ctx, user)
+	require.NoError(t, err)
 
 	userGroup1, err := types.NewUserGroup(types.Metadata{
 		Name: "user-group1",
