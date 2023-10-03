@@ -306,7 +306,7 @@ func (a *ServerWithRoles) LoginRuleClient() loginrulepb.LoginRuleServiceClient {
 	)
 }
 
-// ExternalAuditClient allows ServerWithRoles to implement ClientI.
+// ExternalCloudAuditClient allows ServerWithRoles to implement ClientI.
 // It should not be called through ServerWithRoles,
 // as it returns a dummy client that will always respond with "not implemented".
 func (a *ServerWithRoles) ExternalCloudAuditClient() services.ExternalCloudAudit {

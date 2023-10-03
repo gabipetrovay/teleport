@@ -18,6 +18,8 @@ package local
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	"github.com/gravitational/trace"
 
@@ -32,7 +34,11 @@ const (
 	externalCloudAuditPrefix        = "external_cloud_audit"
 	clusterExternalCloudAuditPrefix = "cluster_external_cloud_audit"
 	externalCloudAuditMaxPageSize   = 100
+	externalCloudAuditLockName      = "external_cloud_audit_lock"
+	externalCloudAuditLockTTL       = 10 * time.Second
 )
+
+var ErrExternalCloudAuditDeleteProtection = errors.New("external cloud audit cannot be deleted because it's used in cluster")
 
 // ExternalCloudAuditService manages external cloud audit resources in the Backend.
 type ExternalCloudAuditService struct {
@@ -80,7 +86,30 @@ func (s *ExternalCloudAuditService) CreateExternalCloudAudit(ctx context.Context
 
 // DeleteExternalAudit removes the specified external cloud audit resource.
 func (s *ExternalCloudAuditService) DeleteExternalCloudAudit(ctx context.Context, name string) error {
-	return trace.Wrap(s.externalCloudAuditService.DeleteResource(ctx, name))
+	// Lock is used to prevent race between EnableClusterExternalCloudAudit and DeleteExternalCloudAudit
+	err := backend.RunWhileLocked(ctx, backend.RunWhileLockedConfig{
+		LockConfiguration: backend.LockConfiguration{
+			Backend:  s.backend,
+			LockName: externalCloudAuditLockName,
+			TTL:      externalCloudAuditLockTTL,
+		},
+	}, func(ctx context.Context) error {
+		got, err := s.GetClusterExternalCloudAudit(ctx)
+		if err != nil {
+			if !trace.IsNotFound(err) {
+				return trace.Wrap(err)
+			}
+			// Not found happens when we don't have any cluster external audit.
+			// In that case we can remove external audit.
+		} else {
+			if got.GetName() == name {
+				return trace.Wrap(ErrExternalCloudAuditDeleteProtection)
+			}
+		}
+		return trace.Wrap(s.externalCloudAuditService.DeleteResource(ctx, name))
+	})
+
+	return trace.Wrap(err)
 }
 
 func (s *ExternalCloudAuditService) EnableClusterExternalCloudAudit(ctx context.Context, in *externalcloudaudit.ClusterExternalCloudAudit) error {
@@ -89,10 +118,28 @@ func (s *ExternalCloudAuditService) EnableClusterExternalCloudAudit(ctx context.
 		return trace.Wrap(err)
 	}
 
-	_, err = s.backend.Put(ctx, backend.Item{
-		Key:   backend.Key(clusterExternalCloudAuditPrefix),
-		Value: value,
+	// Lock is used to prevent race between EnableClusterExternalCloudAudit and DeleteExternalCloudAudit
+	err = backend.RunWhileLocked(ctx, backend.RunWhileLockedConfig{
+		LockConfiguration: backend.LockConfiguration{
+			Backend:  s.backend,
+			LockName: externalCloudAuditLockName,
+			TTL:      externalCloudAuditLockTTL,
+		},
+	}, func(ctx context.Context) error {
+		_, err := s.GetExternalCloudAudit(ctx, in.Spec.ExternalCloudAuditName)
+		if err != nil {
+			if trace.IsNotFound(err) {
+				return trace.BadParameter("cannot set %s as cluster external cloud audit resource, because external cloud audit not exists", in.Spec.ExternalCloudAuditName)
+			}
+			return trace.Wrap(err)
+		}
+		_, err = s.backend.Put(ctx, backend.Item{
+			Key:   backend.Key(clusterExternalCloudAuditPrefix),
+			Value: value,
+		})
+		return trace.Wrap(err)
 	})
+
 	return trace.Wrap(err)
 }
 

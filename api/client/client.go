@@ -796,8 +796,8 @@ func (c *Client) SAMLIdPClient() samlidppb.SAMLIdPServiceClient {
 	return samlidppb.NewSAMLIdPServiceClient(c.conn)
 }
 
-// ExternalAuditClient returns an unadorned External Audit client, using the underlying
-// Auth gRPC connection.
+// ExternalCloudAuditClient returns an unadorned External Cloud Audit client,
+// using the underlying Auth gRPC connection.
 // Clients connecting to non-Enterprise clusters, or older Teleport versions,
 // still get a external audit client when calling this method, but all RPCs will
 // return "not implemented" errors (as per the default gRPC behavior).

@@ -78,7 +78,7 @@ func TestExternalCloudAuditCRUD(t *testing.T) {
 	})
 
 	t.Run("get cluster external cloud audit should be empty", func(t *testing.T) {
-		// Given audit1 and audit2 as external_audit resource
+		// Given audit1 and audit2 as external_cloud_audit resource
 		// When GetClusterExternalAudit is executed
 		// Then NotFound error is returned.
 
@@ -88,9 +88,24 @@ func TestExternalCloudAuditCRUD(t *testing.T) {
 		require.True(t, trace.IsNotFound(err), "expected not found error, got %v", err)
 		require.Nil(t, out)
 	})
-	t.Run("set audit1 to cluster external cloud audit", func(t *testing.T) {
-		// Given audit1 and audit2 as external_audit resource
-		// When SetClusterExternalAudit is executed with audit1
+	t.Run("enable no existing external resouce as cluster external cloud audit fails", func(t *testing.T) {
+		// Given not existing external_cloud_audit resource
+		// When EnableClusterExternalCloudAudit is executed
+		// Then BadParameter error is returned.
+
+		// When
+		err := service.EnableClusterExternalCloudAudit(ctx, &externalcloudaudit.ClusterExternalCloudAudit{
+			Spec: externalcloudaudit.ClusterExternalCloudAuditSpec{
+				ExternalCloudAuditName: "i-dont-exists",
+			},
+		})
+		// Then
+		require.Error(t, err)
+		require.True(t, trace.IsBadParameter(err))
+	})
+	t.Run("enable audit1 as cluster external cloud audit", func(t *testing.T) {
+		// Given audit1 and audit2 as external_cloud_audit resource
+		// When EnableClusterExternalCloudAudit is executed with audit1
 		// Then GetClusterExternalAudit returns audit1.
 
 		// When
@@ -105,9 +120,9 @@ func TestExternalCloudAuditCRUD(t *testing.T) {
 		require.NoError(t, err)
 		require.Empty(t, cmp.Diff(externalAudit1, out, cmpOpts...))
 	})
-	t.Run("set audit2 to cluster external cloud audit", func(t *testing.T) {
-		// Given audit1 as cluster_external_audit
-		// When SetClusterExternalAudit is executed with audit2
+	t.Run("enable audit2 to cluster external cloud audit", func(t *testing.T) {
+		// Given audit1 as cluster_external_cloud_audit
+		// When EnableClusterExternalCloudAudit is executed with audit2
 		// Then GetClusterExternalAudit returns audit2.
 
 		// When
@@ -122,9 +137,19 @@ func TestExternalCloudAuditCRUD(t *testing.T) {
 		require.NoError(t, err)
 		require.Empty(t, cmp.Diff(externalAudit2, out, cmpOpts...))
 	})
-	t.Run("delete cluster external cloud audit", func(t *testing.T) {
-		// Given audit1 as cluster_external_audit
-		// When DeleteClusterExternalAudit is executed
+	t.Run("delete audit2 not possible is used in cluster", func(t *testing.T) {
+		// Given audit2 as cluster_external_cloud_audit
+		// When DeleteExternalAudit is executed
+		// Then error ErrExternalCloudAuditDeleteProtection is returned
+
+		// When
+		err := service.DeleteExternalCloudAudit(ctx, audit2Name)
+		require.ErrorIs(t, err, ErrExternalCloudAuditDeleteProtection)
+	})
+
+	t.Run("disable cluster external cloud audit", func(t *testing.T) {
+		// Given audit1 as cluster_external_cloud_audit
+		// When DisableClusterExternalCloudAudit is executed
 		// Then NotFound error is returned.
 
 		// When
@@ -136,7 +161,7 @@ func TestExternalCloudAuditCRUD(t *testing.T) {
 		require.Nil(t, out)
 	})
 	t.Run("delete audit2", func(t *testing.T) {
-		// Given audit2 as external_audit
+		// Given audit2 as external_cloud_audit
 		// When DeleteExternalAudit is executed
 		// Then GetExternalAudits reurns audit1.
 
