@@ -166,7 +166,7 @@
               "forScopes": ["oss", "enterprise"]
             },
             {
-              "title": "AWS Single Instance Terraform",
+              "title": "AWS Single-Instance Terraform",
               "slug": "/deploy-a-cluster/deployments/aws-starter-cluster-terraform/",
               "forScopes": ["oss", "enterprise"]
             },
