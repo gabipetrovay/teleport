@@ -2623,31 +2623,17 @@ func (g *GRPCServer) GenerateUserSingleUseCerts(stream authpb.AuthService_Genera
 		return trace.Wrap(err)
 	}
 
-	mfaRequired := authpb.MFARequired_MFA_REQUIRED_UNSPECIFIED
-	clusterName, err := actx.GetClusterName()
-	if err != nil {
-		return trace.Wrap(err)
-	}
-
-	// Only check if MFA is required for resources within the current cluster. Determining if
-	// MFA is required for a resource in a leaf cluster will result in a not found error and
-	// prevent users from accessing resources in leaf clusters.
-	if initReq.RouteToCluster == "" || clusterName.GetClusterName() == initReq.RouteToCluster {
-		if required, err := isMFARequiredForSingleUseCertRequest(ctx, actx, initReq); err == nil {
-			// If MFA is not required to gain access to the resource then let the client
-			// know and abort the ceremony.
-			if !required {
-				return trace.Wrap(stream.Send(&authpb.UserSingleUseCertsResponse{
-					Response: &authpb.UserSingleUseCertsResponse_MFAChallenge{
-						MFAChallenge: &authpb.MFAAuthenticateChallenge{
-							MFARequired: authpb.MFARequired_MFA_REQUIRED_NO,
-						},
-					},
-				}))
-			}
-
-			mfaRequired = authpb.MFARequired_MFA_REQUIRED_YES
-		}
+	mfaRequired, err := isMFARequiredForSingleUseCertRequest(ctx, actx, initReq)
+	if err == nil && mfaRequired == authpb.MFARequired_MFA_REQUIRED_NO {
+		// If MFA is not required to gain access to the resource then let the client
+		// know and abort the ceremony.
+		return trace.Wrap(stream.Send(&authpb.UserSingleUseCertsResponse{
+			Response: &authpb.UserSingleUseCertsResponse_MFAChallenge{
+				MFAChallenge: &authpb.MFAAuthenticateChallenge{
+					MFARequired: authpb.MFARequired_MFA_REQUIRED_NO,
+				},
+			},
+		}))
 	}
 
 	// 2. send MFAChallenge
@@ -2723,15 +2709,16 @@ func validateUserSingleUseCertRequest(ctx context.Context, actx *grpcContext, re
 
 // isMFARequiredForSingleUseCertRequest validates that mfa is actually required for
 // the target of the single-use user cert.
-func isMFARequiredForSingleUseCertRequest(ctx context.Context, actx *grpcContext, req *authpb.UserCertsRequest) (bool, error) {
-	mfaReq := &authpb.IsMFARequiredRequest{}
-
+func isMFARequiredForSingleUseCertRequest(ctx context.Context, actx *grpcContext, req *authpb.UserCertsRequest) (authpb.MFARequired, error) {
+	mfaReq := &authpb.IsMFARequiredRequest{
+		RouteToCluster: req.RouteToCluster,
+	}
 	switch req.Usage {
 	case authpb.UserCertsRequest_SSH:
 		// An old or non-conforming client did not provide a login which means rbac
 		// won't be able to accurately determine if mfa is required.
 		if req.SSHLogin == "" {
-			return false, trace.BadParameter("no ssh login provided")
+			return authpb.MFARequired_MFA_REQUIRED_UNSPECIFIED, trace.BadParameter("no ssh login provided")
 		}
 
 		mfaReq.Target = &authpb.IsMFARequiredRequest_Node{Node: &authpb.NodeLogin{Node: req.NodeName, Login: req.SSHLogin}}
@@ -2742,15 +2729,11 @@ func isMFARequiredForSingleUseCertRequest(ctx context.Context, actx *grpcContext
 	case authpb.UserCertsRequest_WindowsDesktop:
 		mfaReq.Target = &authpb.IsMFARequiredRequest_WindowsDesktop{WindowsDesktop: &req.RouteToWindowsDesktop}
 	default:
-		return false, trace.BadParameter("unknown certificate Usage %q", req.Usage)
+		return authpb.MFARequired_MFA_REQUIRED_UNSPECIFIED, trace.BadParameter("unknown certificate Usage %q", req.Usage)
 	}
 
 	resp, err := actx.IsMFARequired(ctx, mfaReq)
-	if err != nil {
-		return false, trace.Wrap(err)
-	}
-
-	return resp.Required, nil
+	return resp.GetMFARequired(), trace.Wrap(err)
 }
 
 // isLocalProxyCertReq returns whether a cert request is for

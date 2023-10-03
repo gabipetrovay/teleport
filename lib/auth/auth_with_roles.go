@@ -5377,12 +5377,32 @@ func (a *ServerWithRoles) IsMFARequired(ctx context.Context, req *proto.IsMFAReq
 	if !hasLocalUserRole(a.context) && !hasRemoteUserRole(a.context) {
 		return nil, trace.AccessDenied("only a user role can call IsMFARequired, got %T", a.context.Checker)
 	}
+
+	// Only check if MFA is required for resources within the current cluster.
+	// Determining if MFA is required for a resource in a leaf cluster will result
+	// in a not found error and prevent users from accessing resources in leaf
+	// clusters.
+	if req.RouteToCluster != "" {
+		clusterName, err := a.GetClusterName()
+		if err != nil {
+			return nil, trace.Wrap(err)
+		}
+		if clusterName.GetClusterName() != req.RouteToCluster {
+			return &proto.IsMFARequiredResponse{
+				Required:    true, // Be conservative and say yes. The truth is we don't know.
+				MFARequired: proto.MFARequired_MFA_REQUIRED_UNSPECIFIED,
+			}, nil
+		}
+	}
+
 	// Certain hardware-key based private key policies are treated as MFA verification.
 	if a.context.Identity.GetIdentity().PrivateKeyPolicy.MFAVerified() {
 		return &proto.IsMFARequiredResponse{
-			Required: false,
+			Required:    false,
+			MFARequired: proto.MFARequired_MFA_REQUIRED_NO,
 		}, nil
 	}
+
 	return a.authServer.isMFARequired(ctx, a.context.Checker, req)
 }
 
@@ -6154,21 +6174,53 @@ func (a *ServerWithRoles) GetAccountRecoveryToken(ctx context.Context, req *prot
 
 // CreateAuthenticateChallenge is implemented by AuthService.CreateAuthenticateChallenge.
 func (a *ServerWithRoles) CreateAuthenticateChallenge(ctx context.Context, req *proto.CreateAuthenticateChallengeRequest) (*proto.MFAAuthenticateChallenge, error) {
+	isLocalOrRemoteUser := authz.IsLocalOrRemoteUser(a.context)
+
+	// Run preliminary user checks first.
 	switch req.GetRequest().(type) {
 	case *proto.CreateAuthenticateChallengeRequest_UserCredentials:
 	case *proto.CreateAuthenticateChallengeRequest_RecoveryStartTokenID:
 	case *proto.CreateAuthenticateChallengeRequest_Passwordless:
 	default: // nil or *proto.CreateAuthenticateChallengeRequest_ContextUser:
-		if !authz.IsLocalOrRemoteUser(a.context) {
+		if !isLocalOrRemoteUser {
 			return nil, trace.BadParameter("only end users are allowed to issue authentication challenges using ContextUser")
 		}
+	}
+
+	// Have we been asked to check if MFA is necessary? Resolve that first.
+	var mfaRequired proto.MFARequired
+	if req.MFARequiredCheck != nil {
+		if !isLocalOrRemoteUser {
+			return nil, trace.BadParameter("only end users are allowed to supply MFARequiredCheck")
+		}
+
+		mfaRequiredResp, err := a.IsMFARequired(ctx, req.MFARequiredCheck)
+		if err != nil {
+			return nil, trace.Wrap(err)
+		}
+
+		// Early exit if we are certain that MFA is not necessary.
+		if !mfaRequiredResp.Required {
+			return &proto.MFAAuthenticateChallenge{
+				// No challenges provided.
+				MFARequired: mfaRequiredResp.MFARequired,
+			}, nil
+		}
+		mfaRequired = mfaRequiredResp.MFARequired
 	}
 
 	// No permission check is required b/c this request verifies request by one of the following:
 	//   - username + password, anyone who has user's password can generate a sign request
 	//   - token provide its own auth
 	//   - the user extracted from context can create their own challenges
-	return a.authServer.CreateAuthenticateChallenge(ctx, req)
+	authnChal, err := a.authServer.CreateAuthenticateChallenge(ctx, req)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	// Set MFA requirement queried above, if any.
+	authnChal.MFARequired = mfaRequired
+	return authnChal, nil
 }
 
 // CreatePrivilegeToken is implemented by AuthService.CreatePrivilegeToken.
