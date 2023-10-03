@@ -1888,16 +1888,6 @@ func TestValidateAccessRequestClusterNames(t *testing.T) {
 	}
 }
 
-type mockResourceLister struct {
-	resources []types.ResourceWithLabels
-}
-
-func (m *mockResourceLister) ListResources(ctx context.Context, _ proto.ListResourcesRequest) (*types.ListResourcesResponse, error) {
-	return &types.ListResourcesResponse{
-		Resources: m.resources,
-	}, nil
-}
-
 func TestMaxDuration(t *testing.T) {
 	// describes a collection of roles and their conditions
 	roleDesc := roleTestSet{
@@ -2132,49 +2122,4 @@ func getMockGetter(t *testing.T, roleDesc roleTestSet, userDesc map[string][]str
 		users: users,
 	}
 	return g
-}
-
-func newNode(t *testing.T, name, hostname string) types.Server {
-	node, err := types.NewServer(name, types.KindNode,
-		types.ServerSpecV2{
-			Hostname: hostname,
-		})
-	require.NoError(t, err)
-	return node
-}
-
-func newApp(t *testing.T, name, description, origin string) types.Application {
-	app, err := types.NewAppV3(types.Metadata{
-		Name:        name,
-		Description: description,
-		Labels: map[string]string{
-			types.OriginLabel: origin,
-		},
-	},
-		types.AppSpecV3{
-			URI:        "https://some-addr.com",
-			PublicAddr: "https://some-addr.com",
-		})
-	require.NoError(t, err)
-	return app
-}
-
-func newUserGroup(t *testing.T, name, description, origin string) types.UserGroup {
-	userGroup, err := types.NewUserGroup(types.Metadata{
-		Name:        name,
-		Description: description,
-		Labels: map[string]string{
-			types.OriginLabel: origin,
-		},
-	}, types.UserGroupSpecV1{})
-	require.NoError(t, err)
-	return userGroup
-}
-
-func newResourceID(clusterName, kind, name string) types.ResourceID {
-	return types.ResourceID{
-		ClusterName: clusterName,
-		Kind:        kind,
-		Name:        name,
-	}
 }
