@@ -798,8 +798,8 @@ func (l *Backend) DeleteRange(ctx context.Context, startKey, endKey []byte) erro
 }
 
 func (l *Backend) ConditionalUpdate(ctx context.Context, i backend.Item) (*backend.Lease, error) {
-	if i.Key == nil {
-		return nil, trace.BadParameter("missing parameter key")
+	if i.Key == nil || i.Revision == "" {
+		return nil, trace.Wrap(backend.ErrIncorrectRevision)
 	}
 
 	if i.Revision == backend.BlankRevision {
@@ -848,8 +848,8 @@ func (l *Backend) ConditionalUpdate(ctx context.Context, i backend.Item) (*backe
 }
 
 func (l *Backend) ConditionalDelete(ctx context.Context, key []byte, revision string) error {
-	if len(key) == 0 {
-		return trace.BadParameter("missing parameter key")
+	if len(key) == 0 || revision == "" {
+		return trace.Wrap(backend.ErrIncorrectRevision)
 	}
 
 	if revision == backend.BlankRevision {

@@ -578,6 +578,10 @@ func (b *Backend) Delete(ctx context.Context, key []byte) error {
 // ConditionalUpdate updates the matching item in Dynamo if the provided revision matches
 // the revision of the item in Dynamo.
 func (b *Backend) ConditionalUpdate(ctx context.Context, item backend.Item) (*backend.Lease, error) {
+	if item.Revision == "" {
+		return nil, trace.Wrap(backend.ErrIncorrectRevision)
+	}
+
 	if item.Revision == backend.BlankRevision {
 		item.Revision = ""
 	}
@@ -594,6 +598,10 @@ func (b *Backend) ConditionalUpdate(ctx context.Context, item backend.Item) (*ba
 // ConditionalDelete deletes item by key if the provided revision matches
 // the revision of the item in Dynamo.
 func (b *Backend) ConditionalDelete(ctx context.Context, key []byte, rev string) error {
+	if rev == "" {
+		return trace.Wrap(backend.ErrIncorrectRevision)
+	}
+
 	av, err := dynamodbattribute.MarshalMap(keyLookup{
 		HashKey:  hashKey,
 		FullPath: prependPrefix(key),
