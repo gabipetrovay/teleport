@@ -20,13 +20,13 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 
-	"github.com/gravitational/teleport/api/types/externalaudit"
+	"github.com/gravitational/teleport/api/types/externalcloudaudit"
 	"github.com/gravitational/teleport/api/types/header"
 )
 
 func TestRoundtrip(t *testing.T) {
-	t.Run("external audit", func(t *testing.T) {
-		externalAudit := newExternalAudit(t, "audit-1")
+	t.Run("external cloud audit", func(t *testing.T) {
+		externalAudit := newExternalCloudAudit(t, "audit-1")
 
 		converted, err := FromProto(ToProto(externalAudit))
 		require.NoError(t, err)
@@ -34,9 +34,9 @@ func TestRoundtrip(t *testing.T) {
 		require.Empty(t, cmp.Diff(externalAudit, converted))
 	})
 
-	t.Run("cluster external audit", func(t *testing.T) {
-		clusterExternalAudit, err := externalaudit.NewClusterExternalAudit(header.Metadata{}, externalaudit.ClusterExternalAuditSpec{
-			ExternalAuditName: "audit-1",
+	t.Run("cluster external cloud audit", func(t *testing.T) {
+		clusterExternalAudit, err := externalcloudaudit.NewClusterExternalCloudAudit(header.Metadata{}, externalcloudaudit.ClusterExternalCloudAuditSpec{
+			ExternalCloudAuditName: "audit-1",
 		})
 		require.NoError(t, err)
 
@@ -47,14 +47,14 @@ func TestRoundtrip(t *testing.T) {
 	})
 }
 
-func newExternalAudit(t *testing.T, name string) *externalaudit.ExternalAudit {
+func newExternalCloudAudit(t *testing.T, name string) *externalcloudaudit.ExternalCloudAudit {
 	t.Helper()
 
-	out, err := externalaudit.NewExternalAudit(
+	out, err := externalcloudaudit.NewExternalCloudAudit(
 		header.Metadata{
 			Name: name,
 		},
-		externalaudit.ExternalAuditSpec{
+		externalcloudaudit.ExternalCloudAuditSpec{
 			IntegrationName:        "integration1",
 			SessionsRecordingsURI:  "s3://mybucket/myprefix",
 			AthenaWorkspace:        "athena_workspace",

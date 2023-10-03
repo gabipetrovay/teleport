@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package externalaudit
+package externalcloudaudit
 
 import (
 	"github.com/gravitational/trace"
@@ -25,17 +25,17 @@ import (
 	"github.com/gravitational/teleport/api/utils"
 )
 
-// ExternalAudit
-type ExternalAudit struct {
+// ExternalCloudAudit
+type ExternalCloudAudit struct {
 	// ResourceHeader is the common resource header for all resources.
 	header.ResourceHeader
 
-	// Spec is the specification for the external audit.
-	Spec ExternalAuditSpec `json:"spec" yaml:"spec"`
+	// Spec is the specification for the external cloud audit.
+	Spec ExternalCloudAuditSpec `json:"spec" yaml:"spec"`
 }
 
-// ExternalAuditSpec is the specification for an external audit.
-type ExternalAuditSpec struct {
+// ExternalCloudAuditSpec is the specification for an external cloud audit.
+type ExternalCloudAuditSpec struct {
 	// IntegrationName is name of existing OIDC intagration used to
 	// generate AWS credentials.
 	IntegrationName string `json:"integration_name" yaml:"integration_name"`
@@ -55,9 +55,9 @@ type ExternalAuditSpec struct {
 	AthenaResultsURI string `json:"athena_results_uri" yaml:"athena_results_uri"`
 }
 
-// NewExternalAudit will create a new external audit.
-func NewExternalAudit(metadata header.Metadata, spec ExternalAuditSpec) (*ExternalAudit, error) {
-	externalaudit := &ExternalAudit{
+// NewExternalCloudAudit will create a new external cloud audit.
+func NewExternalCloudAudit(metadata header.Metadata, spec ExternalCloudAuditSpec) (*ExternalCloudAudit, error) {
+	externalaudit := &ExternalCloudAudit{
 		ResourceHeader: header.ResourceHeaderFromMetadata(metadata),
 		Spec:           spec,
 	}
@@ -70,8 +70,8 @@ func NewExternalAudit(metadata header.Metadata, spec ExternalAuditSpec) (*Extern
 }
 
 // CheckAndSetDefaults validates fields and populates empty fields with default values.
-func (a *ExternalAudit) CheckAndSetDefaults() error {
-	a.SetKind(types.KindExternalAudit)
+func (a *ExternalCloudAudit) CheckAndSetDefaults() error {
+	a.SetKind(types.KindExternalCloudAudit)
 	a.SetVersion(types.V1)
 
 	if err := a.ResourceHeader.CheckAndSetDefaults(); err != nil {
@@ -79,25 +79,25 @@ func (a *ExternalAudit) CheckAndSetDefaults() error {
 	}
 
 	if a.Spec.IntegrationName == "" {
-		return trace.BadParameter("external audit integration_name required")
+		return trace.BadParameter("external cloud audit integration_name required")
 	}
 	if a.Spec.SessionsRecordingsURI == "" {
-		return trace.BadParameter("external audit sessions_recordings_uri required")
+		return trace.BadParameter("external cloud audit sessions_recordings_uri required")
 	}
 	if a.Spec.AthenaWorkspace == "" {
-		return trace.BadParameter("external audit athena_workspace required")
+		return trace.BadParameter("external cloud audit athena_workspace required")
 	}
 	if a.Spec.GlueDatabase == "" {
-		return trace.BadParameter("external audit glue_database required")
+		return trace.BadParameter("external cloud audit glue_database required")
 	}
 	if a.Spec.GlueTable == "" {
-		return trace.BadParameter("external audit glue_table required")
+		return trace.BadParameter("external cloud audit glue_table required")
 	}
 	if a.Spec.AuditEventsLongTermURI == "" {
-		return trace.BadParameter("external audit audit_events_long_term_uri required")
+		return trace.BadParameter("external cloud audit audit_events_long_term_uri required")
 	}
 	if a.Spec.AthenaResultsURI == "" {
-		return trace.BadParameter("external audit athena_results_uri required")
+		return trace.BadParameter("external cloud audit athena_results_uri required")
 	}
 
 	return nil
@@ -105,43 +105,43 @@ func (a *ExternalAudit) CheckAndSetDefaults() error {
 
 // GetMetadata returns metadata. This is specifically for conforming to the Resource interface,
 // and should be removed when possible.
-func (a *ExternalAudit) GetMetadata() types.Metadata {
+func (a *ExternalCloudAudit) GetMetadata() types.Metadata {
 	return legacy.FromHeaderMetadata(a.Metadata)
 }
 
 // MatchSearch goes through select field values of a resource
 // and tries to match against the list of search values.
-func (a *ExternalAudit) MatchSearch(values []string) bool {
+func (a *ExternalCloudAudit) MatchSearch(values []string) bool {
 	fieldVals := append(utils.MapToStrings(a.GetAllLabels()), a.GetName())
 	return types.MatchSearch(fieldVals, values, nil)
 }
 
 // CloneResource returns a copy of the resource as types.ResourceWithLabels.
-func (a *ExternalAudit) CloneResource() types.ResourceWithLabels {
-	var copy *ExternalAudit
+func (a *ExternalCloudAudit) CloneResource() types.ResourceWithLabels {
+	var copy *ExternalCloudAudit
 	utils.StrictObjectToStruct(a, &copy)
 	return copy
 }
 
-// ClusterExternalAudit
-type ClusterExternalAudit struct {
+// ClusterExternalCloudAudit
+type ClusterExternalCloudAudit struct {
 	// ResourceHeader is the common resource header for all resources.
 	header.ResourceHeader
 
-	// Spec is the specification for the external audit.
-	Spec ClusterExternalAuditSpec `json:"spec" yaml:"spec"`
+	// Spec is the specification for the external cloud audit.
+	Spec ClusterExternalCloudAuditSpec `json:"spec" yaml:"spec"`
 }
 
-// ClusterExternalAuditSpec is the specification for an external audit.
-type ClusterExternalAuditSpec struct {
-	// ExternalAuditName is name of existing external audit configuration
-	// that will be used as cluster external audit.
-	ExternalAuditName string `json:"external_audit_name" yaml:"external_audit_name"`
+// ClusterExternalCloudAuditSpec is the specification for an external cloud audit.
+type ClusterExternalCloudAuditSpec struct {
+	// ExternalCloudAuditName is name of existing external cloud audit configuration
+	// that will be used as cluster external cloud audit.
+	ExternalCloudAuditName string `json:"external_cloud_audit_name" yaml:"external_cloud_audit_name"`
 }
 
-// NewClusterExternalAudit will create a new cluster external audit.
-func NewClusterExternalAudit(metadata header.Metadata, spec ClusterExternalAuditSpec) (*ClusterExternalAudit, error) {
-	clusterexternalaudit := &ClusterExternalAudit{
+// NewClusterExternalCloudAudit will create a new cluster external cloud audit.
+func NewClusterExternalCloudAudit(metadata header.Metadata, spec ClusterExternalCloudAuditSpec) (*ClusterExternalCloudAudit, error) {
+	clusterexternalaudit := &ClusterExternalCloudAudit{
 		ResourceHeader: header.ResourceHeaderFromMetadata(metadata),
 		Spec:           spec,
 	}
@@ -154,36 +154,36 @@ func NewClusterExternalAudit(metadata header.Metadata, spec ClusterExternalAudit
 }
 
 // CheckAndSetDefaults validates fields and populates empty fields with default values.
-func (a *ClusterExternalAudit) CheckAndSetDefaults() error {
-	a.SetKind(types.KindClusterExternalAudit)
+func (a *ClusterExternalCloudAudit) CheckAndSetDefaults() error {
+	a.SetKind(types.KindClusterExternalCloudAudit)
 	a.SetVersion(types.V1)
-	a.SetName(types.KindClusterExternalAudit)
+	a.SetName(types.KindClusterExternalCloudAudit)
 
 	if err := a.ResourceHeader.CheckAndSetDefaults(); err != nil {
 		return trace.Wrap(err)
 	}
-	if a.Spec.ExternalAuditName == "" {
-		return trace.BadParameter("external audit name required")
+	if a.Spec.ExternalCloudAuditName == "" {
+		return trace.BadParameter("external cloud audit name required")
 	}
 	return nil
 }
 
 // GetMetadata returns metadata. This is specifically for conforming to the Resource interface,
 // and should be removed when possible.
-func (a *ClusterExternalAudit) GetMetadata() types.Metadata {
+func (a *ClusterExternalCloudAudit) GetMetadata() types.Metadata {
 	return legacy.FromHeaderMetadata(a.Metadata)
 }
 
 // MatchSearch goes through select field values of a resource
 // and tries to match against the list of search values.
-func (a *ClusterExternalAudit) MatchSearch(values []string) bool {
+func (a *ClusterExternalCloudAudit) MatchSearch(values []string) bool {
 	fieldVals := append(utils.MapToStrings(a.GetAllLabels()), a.GetName())
 	return types.MatchSearch(fieldVals, values, nil)
 }
 
 // CloneResource returns a copy of the resource as types.ResourceWithLabels.
-func (a *ClusterExternalAudit) CloneResource() types.ResourceWithLabels {
-	var copy *ClusterExternalAudit
+func (a *ClusterExternalCloudAudit) CloneResource() types.ResourceWithLabels {
+	var copy *ClusterExternalCloudAudit
 	utils.StrictObjectToStruct(a, &copy)
 	return copy
 }

@@ -104,35 +104,35 @@ Same as above, but using JSON output:
 // Initialize allows ResourceCommand to plug itself into the CLI parser
 func (rc *ResourceCommand) Initialize(app *kingpin.Application, config *servicecfg.Config) {
 	rc.CreateHandlers = map[ResourceKind]ResourceCreateHandler{
-		types.KindUser:                     rc.createUser,
-		types.KindRole:                     rc.createRole,
-		types.KindTrustedCluster:           rc.createTrustedCluster,
-		types.KindGithubConnector:          rc.createGithubConnector,
-		types.KindCertAuthority:            rc.createCertAuthority,
-		types.KindClusterAuthPreference:    rc.createAuthPreference,
-		types.KindClusterNetworkingConfig:  rc.createClusterNetworkingConfig,
-		types.KindClusterMaintenanceConfig: rc.createClusterMaintenanceConfig,
-		types.KindSessionRecordingConfig:   rc.createSessionRecordingConfig,
-		types.KindExternalAudit:            rc.createExternalAudit,
-		types.KindClusterExternalAudit:     rc.createClusterExternalAudit,
-		types.KindUIConfig:                 rc.createUIConfig,
-		types.KindLock:                     rc.createLock,
-		types.KindNetworkRestrictions:      rc.createNetworkRestrictions,
-		types.KindApp:                      rc.createApp,
-		types.KindDatabase:                 rc.createDatabase,
-		types.KindKubernetesCluster:        rc.createKubeCluster,
-		types.KindToken:                    rc.createToken,
-		types.KindInstaller:                rc.createInstaller,
-		types.KindNode:                     rc.createNode,
-		types.KindOIDCConnector:            rc.createOIDCConnector,
-		types.KindSAMLConnector:            rc.createSAMLConnector,
-		types.KindLoginRule:                rc.createLoginRule,
-		types.KindSAMLIdPServiceProvider:   rc.createSAMLIdPServiceProvider,
-		types.KindDevice:                   rc.createDevice,
-		types.KindOktaImportRule:           rc.createOktaImportRule,
-		types.KindIntegration:              rc.createIntegration,
-		types.KindWindowsDesktop:           rc.createWindowsDesktop,
-		types.KindAccessList:               rc.createAccessList,
+		types.KindUser:                      rc.createUser,
+		types.KindRole:                      rc.createRole,
+		types.KindTrustedCluster:            rc.createTrustedCluster,
+		types.KindGithubConnector:           rc.createGithubConnector,
+		types.KindCertAuthority:             rc.createCertAuthority,
+		types.KindClusterAuthPreference:     rc.createAuthPreference,
+		types.KindClusterNetworkingConfig:   rc.createClusterNetworkingConfig,
+		types.KindClusterMaintenanceConfig:  rc.createClusterMaintenanceConfig,
+		types.KindSessionRecordingConfig:    rc.createSessionRecordingConfig,
+		types.KindExternalCloudAudit:        rc.createExternalCloudAudit,
+		types.KindClusterExternalCloudAudit: rc.createClusterExternalCloudAudit,
+		types.KindUIConfig:                  rc.createUIConfig,
+		types.KindLock:                      rc.createLock,
+		types.KindNetworkRestrictions:       rc.createNetworkRestrictions,
+		types.KindApp:                       rc.createApp,
+		types.KindDatabase:                  rc.createDatabase,
+		types.KindKubernetesCluster:         rc.createKubeCluster,
+		types.KindToken:                     rc.createToken,
+		types.KindInstaller:                 rc.createInstaller,
+		types.KindNode:                      rc.createNode,
+		types.KindOIDCConnector:             rc.createOIDCConnector,
+		types.KindSAMLConnector:             rc.createSAMLConnector,
+		types.KindLoginRule:                 rc.createLoginRule,
+		types.KindSAMLIdPServiceProvider:    rc.createSAMLIdPServiceProvider,
+		types.KindDevice:                    rc.createDevice,
+		types.KindOktaImportRule:            rc.createOktaImportRule,
+		types.KindIntegration:               rc.createIntegration,
+		types.KindWindowsDesktop:            rc.createWindowsDesktop,
+		types.KindAccessList:                rc.createAccessList,
 	}
 	rc.UpdateHandlers = map[ResourceKind]ResourceCreateHandler{
 		types.KindUser: rc.updateUser,
@@ -585,35 +585,35 @@ func (rc *ResourceCommand) createSessionRecordingConfig(ctx context.Context, cli
 	return nil
 }
 
-// createExternalAudit implements `tctl create external_audit.yaml` command.
-func (rc *ResourceCommand) createExternalAudit(ctx context.Context, client auth.ClientI, raw services.UnknownResource) error {
-	config, err := services.UnmarshalExternalAudit(raw.Raw)
+// createExternalAudit implements `tctl create external_cloud_audit` command.
+func (rc *ResourceCommand) createExternalCloudAudit(ctx context.Context, client auth.ClientI, raw services.UnknownResource) error {
+	config, err := services.UnmarshalExternalCloudAudit(raw.Raw)
 	if err != nil {
 		return trace.Wrap(err)
 	}
-	externalAuditClient := client.ExternalAuditClient()
-	_, err = externalAuditClient.CreateExternalAudit(ctx, config)
+	externalAuditClient := client.ExternalCloudAuditClient()
+	_, err = externalAuditClient.CreateExternalCloudAudit(ctx, config)
 	if err != nil {
 		return trace.Wrap(err)
 	}
 
-	fmt.Printf("external audit configuration has been updated\n")
+	fmt.Printf("external cloud audit configuration has been updated\n")
 	return nil
 }
 
 // createClusterExternalAudit implements `tctl create external_audit.yaml` command.
-func (rc *ResourceCommand) createClusterExternalAudit(ctx context.Context, client auth.ClientI, raw services.UnknownResource) error {
-	config, err := services.UnmarshalClusterExternalAudit(raw.Raw)
+func (rc *ResourceCommand) createClusterExternalCloudAudit(ctx context.Context, client auth.ClientI, raw services.UnknownResource) error {
+	config, err := services.UnmarshalClusterExternalCloudAudit(raw.Raw)
 	if err != nil {
 		return trace.Wrap(err)
 	}
-	externalAuditClient := client.ExternalAuditClient()
-	err = externalAuditClient.SetClusterExternalAudit(ctx, config)
+	externalCloudAuditClient := client.ExternalCloudAuditClient()
+	err = externalCloudAuditClient.EnableClusterExternalCloudAudit(ctx, config)
 	if err != nil {
 		return trace.Wrap(err)
 	}
 
-	fmt.Printf("cluster external audit configuration has been updated\n")
+	fmt.Printf("cluster external cloud audit configuration has been updated\n")
 	return nil
 }
 
@@ -1137,16 +1137,16 @@ func (rc *ResourceCommand) Delete(ctx context.Context, client auth.ClientI) (err
 			return trace.Wrap(err)
 		}
 		fmt.Printf("session recording configuration has been reset to defaults\n")
-	case types.KindExternalAudit:
-		if err := client.ExternalAuditClient().DeleteExternalAudit(ctx, rc.ref.Name); err != nil {
+	case types.KindExternalCloudAudit:
+		if err := client.ExternalCloudAuditClient().DeleteExternalCloudAudit(ctx, rc.ref.Name); err != nil {
 			return trace.Wrap(err)
 		}
-		fmt.Printf("external audit configuration has been reset to defaults\n")
-	case types.KindClusterExternalAudit:
-		if err := client.ExternalAuditClient().DeleteClusterExternalAudit(ctx); err != nil {
+		fmt.Printf("external cloud audit configuration has been reset to defaults\n")
+	case types.KindClusterExternalCloudAudit:
+		if err := client.ExternalCloudAuditClient().DisableClusterExternalCloudAudit(ctx); err != nil {
 			return trace.Wrap(err)
 		}
-		fmt.Printf("cluster external audit configuration has been reset to defaults\n")
+		fmt.Printf("cluster external cloud audit configuration has been reset to defaults\n")
 	case types.KindLock:
 		name := rc.ref.Name
 		if rc.ref.SubKind != "" {

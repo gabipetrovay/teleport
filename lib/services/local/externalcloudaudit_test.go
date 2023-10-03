@@ -24,13 +24,13 @@ import (
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/require"
 
-	"github.com/gravitational/teleport/api/types/externalaudit"
+	"github.com/gravitational/teleport/api/types/externalcloudaudit"
 	"github.com/gravitational/teleport/api/types/header"
 	"github.com/gravitational/teleport/lib/backend"
 	"github.com/gravitational/teleport/lib/backend/memory"
 )
 
-func TestExternalAuditCRUD(t *testing.T) {
+func TestExternalCloudAuditCRUD(t *testing.T) {
 	ctx := context.Background()
 	clock := clockwork.NewFakeClock()
 
@@ -40,13 +40,13 @@ func TestExternalAuditCRUD(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	service, err := NewExternalAuditService(backend.NewSanitizer(mem))
+	service, err := NewExternalCloudAuditService(backend.NewSanitizer(mem))
 	require.NoError(t, err)
 
 	audit1Name := "audit1"
-	externalAudit1 := newExternalAudit(t, audit1Name, "s3://bucket1/ses-rec")
+	externalAudit1 := newExternalCloudAudit(t, audit1Name, "s3://bucket1/ses-rec")
 	audit2Name := "audit2"
-	externalAudit2 := newExternalAudit(t, audit2Name, "s3://bucket2/ses-rec")
+	externalAudit2 := newExternalCloudAudit(t, audit2Name, "s3://bucket2/ses-rec")
 
 	cmpOpts := []cmp.Option{
 		cmpopts.IgnoreFields(header.Metadata{}, "ID", "Revision"),
@@ -60,78 +60,78 @@ func TestExternalAuditCRUD(t *testing.T) {
 		// and GetExternalAudits returns both.
 
 		// When
-		_, err := service.CreateExternalAudit(ctx, externalAudit1)
+		_, err := service.CreateExternalCloudAudit(ctx, externalAudit1)
 		require.NoError(t, err)
-		_, err = service.CreateExternalAudit(ctx, externalAudit2)
+		_, err = service.CreateExternalCloudAudit(ctx, externalAudit2)
 		require.NoError(t, err)
 
 		// Then
-		out, err := service.GetExternalAudit(ctx, audit1Name)
+		out, err := service.GetExternalCloudAudit(ctx, audit1Name)
 		require.NoError(t, err)
 		require.Empty(t, cmp.Diff(externalAudit1, out, cmpOpts...))
-		out, err = service.GetExternalAudit(ctx, audit2Name)
+		out, err = service.GetExternalCloudAudit(ctx, audit2Name)
 		require.NoError(t, err)
 		require.Empty(t, cmp.Diff(externalAudit2, out, cmpOpts...))
-		listOfAudits, err := service.GetExternalAudits(ctx)
+		listOfAudits, err := service.GetExternalCloudAudits(ctx)
 		require.NoError(t, err)
-		require.Empty(t, cmp.Diff([]*externalaudit.ExternalAudit{externalAudit1, externalAudit2}, listOfAudits, cmpOpts...))
+		require.Empty(t, cmp.Diff([]*externalcloudaudit.ExternalCloudAudit{externalAudit1, externalAudit2}, listOfAudits, cmpOpts...))
 	})
 
-	t.Run("get cluster external audit should be empty", func(t *testing.T) {
+	t.Run("get cluster external cloud audit should be empty", func(t *testing.T) {
 		// Given audit1 and audit2 as external_audit resource
 		// When GetClusterExternalAudit is executed
 		// Then NotFound error is returned.
 
 		// When
-		out, err := service.GetClusterExternalAudit(ctx)
+		out, err := service.GetClusterExternalCloudAudit(ctx)
 		// Then
 		require.True(t, trace.IsNotFound(err), "expected not found error, got %v", err)
 		require.Nil(t, out)
 	})
-	t.Run("set audit1 to cluster external audit", func(t *testing.T) {
+	t.Run("set audit1 to cluster external cloud audit", func(t *testing.T) {
 		// Given audit1 and audit2 as external_audit resource
 		// When SetClusterExternalAudit is executed with audit1
 		// Then GetClusterExternalAudit returns audit1.
 
 		// When
-		err := service.SetClusterExternalAudit(ctx, &externalaudit.ClusterExternalAudit{
-			Spec: externalaudit.ClusterExternalAuditSpec{
-				ExternalAuditName: audit1Name,
+		err := service.EnableClusterExternalCloudAudit(ctx, &externalcloudaudit.ClusterExternalCloudAudit{
+			Spec: externalcloudaudit.ClusterExternalCloudAuditSpec{
+				ExternalCloudAuditName: audit1Name,
 			},
 		})
 		require.NoError(t, err)
 		// Then
-		out, err := service.GetClusterExternalAudit(ctx)
+		out, err := service.GetClusterExternalCloudAudit(ctx)
 		require.NoError(t, err)
 		require.Empty(t, cmp.Diff(externalAudit1, out, cmpOpts...))
 	})
-	t.Run("set audit2 to cluster external audit", func(t *testing.T) {
+	t.Run("set audit2 to cluster external cloud audit", func(t *testing.T) {
 		// Given audit1 as cluster_external_audit
 		// When SetClusterExternalAudit is executed with audit2
 		// Then GetClusterExternalAudit returns audit2.
 
 		// When
-		err := service.SetClusterExternalAudit(ctx, &externalaudit.ClusterExternalAudit{
-			Spec: externalaudit.ClusterExternalAuditSpec{
-				ExternalAuditName: audit2Name,
+		err := service.EnableClusterExternalCloudAudit(ctx, &externalcloudaudit.ClusterExternalCloudAudit{
+			Spec: externalcloudaudit.ClusterExternalCloudAuditSpec{
+				ExternalCloudAuditName: audit2Name,
 			},
 		})
 		require.NoError(t, err)
 		// Then
-		out, err := service.GetClusterExternalAudit(ctx)
+		out, err := service.GetClusterExternalCloudAudit(ctx)
 		require.NoError(t, err)
 		require.Empty(t, cmp.Diff(externalAudit2, out, cmpOpts...))
 	})
-	t.Run("delete cluster external audit", func(t *testing.T) {
+	t.Run("delete cluster external cloud audit", func(t *testing.T) {
 		// Given audit1 as cluster_external_audit
 		// When DeleteClusterExternalAudit is executed
 		// Then NotFound error is returned.
 
 		// When
-		err := service.DeleteClusterExternalAudit(ctx)
+		err := service.DisableClusterExternalCloudAudit(ctx)
 		require.NoError(t, err)
 		// Then
-		out, err := service.GetClusterExternalAudit(ctx)
+		out, err := service.GetClusterExternalCloudAudit(ctx)
 		require.True(t, trace.IsNotFound(err), "expected not found error, got %v", err)
 		require.Nil(t, out)
 	})
@@ -141,18 +141,18 @@ func TestExternalAuditCRUD(t *testing.T) {
 		// Then GetExternalAudits reurns audit1.
 
 		// When
-		err := service.DeleteExternalAudit(ctx, audit2Name)
+		err := service.DeleteExternalCloudAudit(ctx, audit2Name)
 		require.NoError(t, err)
 		// Then
-		out, err := service.GetExternalAudits(ctx)
+		out, err := service.GetExternalCloudAudits(ctx)
 		require.NoError(t, err)
-		require.Empty(t, cmp.Diff([]*externalaudit.ExternalAudit{externalAudit1}, out, cmpOpts...))
+		require.Empty(t, cmp.Diff([]*externalcloudaudit.ExternalCloudAudit{externalAudit1}, out, cmpOpts...))
 	})
 }
 
-func newExternalAudit(t *testing.T, name, sessionsRecordingsURI string) *externalaudit.ExternalAudit {
+func newExternalCloudAudit(t *testing.T, name, sessionsRecordingsURI string) *externalcloudaudit.ExternalCloudAudit {
 	t.Helper()
-	out, err := externalaudit.NewExternalAudit(header.Metadata{Name: name}, externalaudit.ExternalAuditSpec{
+	out, err := externalcloudaudit.NewExternalCloudAudit(header.Metadata{Name: name}, externalcloudaudit.ExternalCloudAuditSpec{
 		IntegrationName:        "aws-integration-1",
 		SessionsRecordingsURI:  sessionsRecordingsURI,
 		AthenaWorkspace:        "primary",

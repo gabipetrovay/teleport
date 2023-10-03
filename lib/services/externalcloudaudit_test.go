@@ -21,18 +21,18 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/gravitational/teleport/api/types/externalaudit"
+	"github.com/gravitational/teleport/api/types/externalcloudaudit"
 	"github.com/gravitational/teleport/api/types/header"
 	"github.com/gravitational/teleport/lib/utils"
 )
 
-// TestExternalAudit verifies if marshaling/unmarshaling on external audit works.
-func TestExternalAudit(t *testing.T) {
-	expected, err := externalaudit.NewExternalAudit(
+// TestExternalAudit verifies if marshaling/unmarshaling on external cloud audit works.
+func TestExternalCloudAudit(t *testing.T) {
+	expected, err := externalcloudaudit.NewExternalCloudAudit(
 		header.Metadata{
 			Name: "test-externalaudit",
 		},
-		externalaudit.ExternalAuditSpec{
+		externalcloudaudit.ExternalCloudAuditSpec{
 			IntegrationName:        "aws-integration-1",
 			SessionsRecordingsURI:  "s3://bucket/sess_rec",
 			AthenaWorkspace:        "primary",
@@ -46,48 +46,48 @@ func TestExternalAudit(t *testing.T) {
 	t.Run("Unmarshal from testdata and compare", func(t *testing.T) {
 		data, err := utils.ToJSON([]byte(externalAuditYAML))
 		require.NoError(t, err)
-		actual, err := UnmarshalExternalAudit(data)
+		actual, err := UnmarshalExternalCloudAudit(data)
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
 	t.Run("marshal and unmarshal back", func(t *testing.T) {
 		require.NoError(t, err)
-		data, err := MarshalExternalAudit(expected)
+		data, err := MarshalExternalCloudAudit(expected)
 		require.NoError(t, err)
-		actual, err := UnmarshalExternalAudit(data)
+		actual, err := UnmarshalExternalCloudAudit(data)
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
 }
 
-// TestClusterExternalAudit verifies if marshaling/unmarshaling on cluster external audit works.
-func TestClusterExternalAudit(t *testing.T) {
-	expected, err := externalaudit.NewClusterExternalAudit(
+// TestClusterExternalAudit verifies if marshaling/unmarshaling on cluster external cloud audit works.
+func TestClusterExternalCloudAudit(t *testing.T) {
+	expected, err := externalcloudaudit.NewClusterExternalCloudAudit(
 		header.Metadata{},
-		externalaudit.ClusterExternalAuditSpec{
-			ExternalAuditName: "test-externalaudit",
+		externalcloudaudit.ClusterExternalCloudAuditSpec{
+			ExternalCloudAuditName: "test-externalaudit",
 		},
 	)
 	require.NoError(t, err)
 	t.Run("Unmarshal from testdata and compare", func(t *testing.T) {
 		data, err := utils.ToJSON([]byte(clusterExternalAuditYAML))
 		require.NoError(t, err)
-		actual, err := UnmarshalClusterExternalAudit(data)
+		actual, err := UnmarshalClusterExternalCloudAudit(data)
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
 	t.Run("marshal and unmarshal back", func(t *testing.T) {
 		require.NoError(t, err)
-		data, err := MarshalClusterExternalAudit(expected)
+		data, err := MarshalClusterExternalCloudAudit(expected)
 		require.NoError(t, err)
-		actual, err := UnmarshalClusterExternalAudit(data)
+		actual, err := UnmarshalClusterExternalCloudAudit(data)
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
 }
 
 var externalAuditYAML = `---
-kind: external_audit
+kind: external_cloud_audit
 version: v1
 metadata:
   name: test-externalaudit
@@ -102,10 +102,10 @@ spec:
 `
 
 var clusterExternalAuditYAML = `---
-kind: cluster_external_audit
+kind: cluster_external_cloud_audit
 version: v1
 metadata:
-  name: cluster_external_audit
+  name: cluster_external_cloud_audit
 spec:
-  external_audit_name: test-externalaudit
+  external_cloud_audit_name: test-externalaudit
 `

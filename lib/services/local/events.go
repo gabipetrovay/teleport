@@ -77,10 +77,10 @@ func (e *EventsService) NewWatcher(ctx context.Context, watch types.Watch) (type
 			parser = newAuthPreferenceParser()
 		case types.KindSessionRecordingConfig:
 			parser = newSessionRecordingConfigParser()
-		case types.KindExternalAudit:
-			parser = newExternalAuditParser()
-		case types.KindClusterExternalAudit:
-			parser = newClusterExternalAuditParser()
+		case types.KindExternalCloudAudit:
+			parser = newExternalCloudAuditParser()
+		case types.KindClusterExternalCloudAudit:
+			parser = newClusterExternalCloudAuditParser()
 		case types.KindUIConfig:
 			parser = newUIConfigParser()
 		case types.KindClusterName:
@@ -622,22 +622,22 @@ func (p *sessionRecordingConfigParser) parse(event backend.Event) (types.Resourc
 	}
 }
 
-func newExternalAuditParser() *externalAuditParser {
-	return &externalAuditParser{
-		baseParser: newBaseParser(backend.Key(externalAuditPrefix)),
+func newExternalCloudAuditParser() *externalCloudAuditParser {
+	return &externalCloudAuditParser{
+		baseParser: newBaseParser(backend.Key(externalCloudAuditPrefix)),
 	}
 }
 
-type externalAuditParser struct {
+type externalCloudAuditParser struct {
 	baseParser
 }
 
-func (p *externalAuditParser) parse(event backend.Event) (types.Resource, error) {
+func (p *externalCloudAuditParser) parse(event backend.Event) (types.Resource, error) {
 	switch event.Type {
 	case types.OpDelete:
-		return resourceHeader(event, types.KindExternalAudit, types.V1, 0)
+		return resourceHeader(event, types.KindExternalCloudAudit, types.V1, 0)
 	case types.OpPut:
-		return services.UnmarshalExternalAudit(event.Item.Value,
+		return services.UnmarshalExternalCloudAudit(event.Item.Value,
 			services.WithResourceID(event.Item.ID),
 			services.WithExpires(event.Item.Expires),
 		)
@@ -646,22 +646,22 @@ func (p *externalAuditParser) parse(event backend.Event) (types.Resource, error)
 	}
 }
 
-func newClusterExternalAuditParser() *ClusterexternalAuditParser {
-	return &ClusterexternalAuditParser{
-		baseParser: newBaseParser(backend.Key(clusterExternalAuditPrefix)),
+func newClusterExternalCloudAuditParser() *clusterExternalAuditCloudParser {
+	return &clusterExternalAuditCloudParser{
+		baseParser: newBaseParser(backend.Key(clusterExternalCloudAuditPrefix)),
 	}
 }
 
-type ClusterexternalAuditParser struct {
+type clusterExternalAuditCloudParser struct {
 	baseParser
 }
 
-func (p *ClusterexternalAuditParser) parse(event backend.Event) (types.Resource, error) {
+func (p *clusterExternalAuditCloudParser) parse(event backend.Event) (types.Resource, error) {
 	switch event.Type {
 	case types.OpDelete:
-		return resourceHeader(event, types.KindClusterExternalAudit, types.V1, 0)
+		return resourceHeader(event, types.KindClusterExternalCloudAudit, types.V1, 0)
 	case types.OpPut:
-		return services.UnmarshalClusterExternalAudit(event.Item.Value,
+		return services.UnmarshalClusterExternalCloudAudit(event.Item.Value,
 			services.WithResourceID(event.Item.ID),
 			services.WithExpires(event.Item.Expires),
 		)
