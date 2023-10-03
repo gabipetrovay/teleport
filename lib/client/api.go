@@ -78,6 +78,7 @@ import (
 	kubeutils "github.com/gravitational/teleport/lib/kube/utils"
 	"github.com/gravitational/teleport/lib/modules"
 	"github.com/gravitational/teleport/lib/multiplexer"
+	"github.com/gravitational/teleport/lib/multiplexer/resume"
 	"github.com/gravitational/teleport/lib/observability/tracing"
 	"github.com/gravitational/teleport/lib/services"
 	"github.com/gravitational/teleport/lib/session"
@@ -1609,6 +1610,12 @@ func (tc *TeleportClient) ConnectToNode(ctx context.Context, clt *ClusterClient,
 			return
 		}
 
+		conn, err = resume.NewResumableSSHClientConn(conn)
+		if err != nil {
+			directResultC <- clientRes{err: err}
+			return
+		}
+
 		sshConfig := clt.ProxyClient.SSHConfig(user)
 		clt, err := NewNodeClient(ctx, sshConfig, conn, nodeDetails.ProxyFormat(), nodeDetails.Addr, tc, details.FIPS)
 		directResultC <- clientRes{clt: clt, err: err}
@@ -1741,6 +1748,11 @@ func (tc *TeleportClient) connectToNodeWithMFA(ctx context.Context, clt *Cluster
 	}
 
 	conn, details, err := clt.ProxyClient.DialHost(ctx, nodeDetails.Addr, nodeDetails.Cluster, tc.localAgent.ExtendedAgent)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	conn, err = resume.NewResumableSSHClientConn(conn)
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}

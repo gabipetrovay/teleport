@@ -15,7 +15,10 @@
 package resume
 
 import (
+	"crypto/rand"
+	"io"
 	"net"
+	"sync"
 
 	"github.com/gravitational/trace"
 	"github.com/sirupsen/logrus"
@@ -41,15 +44,18 @@ type connectionHandler interface {
 func NewResumableSSHServer(sshServer connectionHandler) *ResumableSSHServer {
 	return &ResumableSSHServer{
 		sshServer: sshServer,
+		log:       logrus.WithField(trace.Component, "resume"),
 
-		log: logrus.WithField(trace.Component, "resume"),
+		conns: make(map[[16]byte]*Conn),
 	}
 }
 
 type ResumableSSHServer struct {
 	sshServer connectionHandler
+	log       logrus.FieldLogger
 
-	log logrus.FieldLogger
+	mu    sync.Mutex
+	conns map[[16]byte]*Conn
 }
 
 var _ connectionHandler = (*ResumableSSHServer)(nil)
@@ -76,10 +82,49 @@ func (r *ResumableSSHServer) HandleConnection(nc net.Conn) {
 	}
 	_, _ = conn.Write([]byte(serverPrelude)) // skipped
 
-	r.log.Debug("Handling resumable SSH connection.")
+	isNew, err := conn.ReadPrelude("\x00")
+	if err != nil {
+		if !utils.IsOKNetworkError(err) {
+			r.log.WithError(err).Error("Error while handling connection.")
+		}
+		conn.Close()
+		return
+	}
+	if isNew {
+		r.log.Debug("Handling new resumable SSH connection.")
 
-	// TODO(espadolini): run resumable protocol
-	r.sshServer.HandleConnection(conn)
+		var resumptionToken [16]byte
+		if _, err := rand.Read(resumptionToken[:]); err != nil {
+			r.log.WithError(err).Error("Failed to generate resumption token.")
+			conn.Close()
+			return
+		}
+		for resumptionToken[0] == 0 {
+			if _, err := rand.Read(resumptionToken[:1]); err != nil {
+				r.log.WithError(err).Error("Failed to generate resumption token.")
+				conn.Close()
+				return
+			}
+		}
+
+		if _, err := conn.Write(resumptionToken[:]); err != nil {
+			if !utils.IsOKNetworkError(err) {
+				r.log.WithError(err).Error("Error while handling connection.")
+			}
+			conn.Close()
+			return
+		}
+
+		resumableConn := NewConn(conn.LocalAddr(), conn.RemoteAddr())
+		resumableConn.Attach(conn)
+
+		r.mu.Lock()
+		r.conns[resumptionToken] = resumableConn
+		r.mu.Unlock()
+
+		r.sshServer.HandleConnection(resumableConn)
+		return
+	}
 }
 
 func NewResumableSSHClientConn(nc net.Conn) (net.Conn, error) {
@@ -103,11 +148,20 @@ func NewResumableSSHClientConn(nc net.Conn) (net.Conn, error) {
 	}
 	_, _ = conn.Write([]byte(sshPrefix)) // skipped
 
-	if _, err := conn.Write([]byte(clientSuffix)); err != nil {
+	if _, err := conn.Write([]byte(clientSuffix + "\x00")); err != nil {
 		conn.Close()
 		return nil, trace.Wrap(err)
 	}
 
+	var resumptionToken [16]byte
+	if _, err := io.ReadFull(conn, resumptionToken[:]); err != nil {
+		conn.Close()
+		return nil, trace.Wrap(err)
+	}
+
+	resumableConn := NewConn(conn.LocalAddr(), conn.RemoteAddr())
+	resumableConn.Attach(conn)
+
 	// TODO(espadolini): run resumable protocol
-	return conn, nil
+	return resumableConn, nil
 }
