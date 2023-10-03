@@ -32,7 +32,7 @@ var sampleAccessRequestData = AccessRequestData{
 func TestEncodeAccessRequestData(t *testing.T) {
 	dataMap, err := EncodeAccessRequestData(sampleAccessRequestData)
 	assert.Nil(t, err)
-	assert.Len(t, dataMap, 6)
+	assert.Len(t, dataMap, 7)
 	assert.Equal(t, "user-foo", dataMap["user"])
 	assert.Equal(t, "role-foo,role-bar", dataMap["roles"])
 	assert.Equal(t, "foo reason", dataMap["request_reason"])
@@ -57,7 +57,7 @@ func TestDecodeAccessRequestData(t *testing.T) {
 func TestEncodeEmptyAccessRequestData(t *testing.T) {
 	dataMap, err := EncodeAccessRequestData(AccessRequestData{})
 	assert.Nil(t, err)
-	assert.Len(t, dataMap, 6)
+	assert.Len(t, dataMap, 7)
 	for key, value := range dataMap {
 		assert.Emptyf(t, value, "value at key %q must be empty", key)
 	}
