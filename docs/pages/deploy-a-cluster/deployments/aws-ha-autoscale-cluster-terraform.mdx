@@ -137,7 +137,7 @@ Things you will need to decide on:
 ### region
 
 ```code
-export TF_VAR_region="<Var name="us-west-2" />"
+$ export TF_VAR_region="<Var name="us-west-2" />"
 ```
 
 The AWS region to run in. You should pick from the supported list as detailed in the [README](https://github.com/gravitational/teleport/blob/branch/v(=teleport.major_version=)/examples/aws/terraform/ha-autoscale-cluster/README.md). These are regions which support [DynamoDB encryption
@@ -146,7 +146,7 @@ at rest](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Encryp
 ### cluster_name
 
 ```code
-export TF_VAR_cluster_name="<Var name="teleport-example" />"
+$ export TF_VAR_cluster_name="<Var name="teleport-example" />"
 ```
 
 This is the internal Teleport cluster name to use. This should be unique, and not contain spaces, dots (.) or other
@@ -157,7 +157,7 @@ cluster from scratch, so choose carefully. A good example might be something lik
 ### ami_name
 
 ```code
-export TF_VAR_ami_name="gravitational-teleport-ami-ent-(=teleport.version=)"
+$ export TF_VAR_ami_name="gravitational-teleport-ami-ent-(=teleport.version=)"
 ```
 
 Gravitational automatically builds and publishes OSS, Enterprise and Enterprise FIPS 140-2 AMIs when we
@@ -175,24 +175,24 @@ the example `awscli` commands below. The output is in JSON format by default.
 >
   OSS AMIs<br/>
   ```code
-  aws --region <Var name="us-west-2" /> ec2 describe-images --owners 126027368216 --filters 'Name=name,Values=gravitational-teleport-ami-oss-(=teleport.version=)'
+  $ aws --region <Var name="us-west-2" /> ec2 describe-images --owners 126027368216 --filters 'Name=name,Values=gravitational-teleport-ami-oss-(=teleport.version=)'
   ```
 
   Enterprise AMIs<br/>
   ```code
-  aws --region <Var name="us-west-2" /> ec2 describe-images --owners 126027368216 --filters 'Name=name,Values=gravitational-teleport-ami-ent-(=teleport.version=)'
+  $ aws --region <Var name="us-west-2" /> ec2 describe-images --owners 126027368216 --filters 'Name=name,Values=gravitational-teleport-ami-ent-(=teleport.version=)'
   ```
 
   List Enterprise FIPS 140-2 AMIs<br/>
   ```code
-  aws --region <Var name="us-west-2" /> ec2 describe-images --owners 126027368216 --filters 'Name=name,Values=gravitational-teleport-ami-ent-(=teleport.version=)-fips'
+  $ aws --region <Var name="us-west-2" /> ec2 describe-images --owners 126027368216 --filters 'Name=name,Values=gravitational-teleport-ami-ent-(=teleport.version=)-fips'
   ```
 </Admonition>
 
 ### key_name
 
 ```code
-export TF_VAR_key_name="exampleuser"
+$ export TF_VAR_key_name="exampleuser"
 ```
 
 The AWS keypair name to use when deploying EC2 instances. This must exist in the same region as you
@@ -204,18 +204,18 @@ EC2 instances. Do not use a keypair that you do not have access to.
 (!docs/pages/includes//enterprise/obtainlicense.mdx!)
 
 ```code
-export TF_VAR_license_path="/home/user/license.pem"
+$ export TF_VAR_license_path="/home/user/license.pem"
 ```
 
-This license will be uploaded to AWS SSM and automatically downloaded to Teleport auth nodes in order to enable
+This license will be uploaded to AWS SSM and automatically downloaded to Teleport Auth Service instances in order to enable
 Teleport Enterprise/Pro functionality.
 
-(OSS users can provide any valid local file path here - it isn't used by the auth server in a Teleport OSS install)
+(OSS users can provide any valid local file path here - it isn't used by the Teleport Auth Service in a Teleport OSS install)
 
 ### route53\_zone
 
 ```code
-export TF_VAR_route53_zone="example.com"
+$ export TF_VAR_route53_zone="example.com"
 ```
 
 Our Terraform setup requires you to have your domain provisioned in AWS Route 53 - it will automatically add
@@ -235,7 +235,7 @@ You should use the appropriate domain without the trailing dot.
 ### route53\_domain
 
 ```code
-export TF_VAR_route53_domain="<Var name="teleport.example.com" />"
+$ export TF_VAR_route53_domain="<Var name="teleport.example.com" />"
 ```
 
 A subdomain to set up as a CNAME to the Teleport load balancer for web access. This will be the public-facing domain
@@ -246,7 +246,7 @@ This must be a subdomain of the domain you chose for [`route53_zone`](#route53\_
 ### add\_wildcard\_route53\_record
 
 ```code
-export TF_VAR_add_wildcard_route53_record="true"
+$ export TF_VAR_add_wildcard_route53_record="true"
 ```
 
 Used to enable the Teleport Application Service for subdomains of the Teleport Proxy Service's public web address. A wildcard entry for the public-facing
@@ -256,7 +256,7 @@ certificate is included if this is set to `true`. Let's Encrypt automatically in
 ### enable\_mongodb\_listener
 
 ```code
-export TF_VAR_enable_mongodb_listener="false"
+$ export TF_VAR_enable_mongodb_listener="false"
 ```
 
 When set to true, port `27017` is enabled on the Network Load Balancer that connects to the Teleport MongoDB listener port. Required for MongoDB connections, if not using TLS routing.
@@ -264,7 +264,7 @@ When set to true, port `27017` is enabled on the Network Load Balancer that conn
 ### enable\_mysql\_listener
 
 ```code
-export TF_VAR_enable_mysql_listener="false"
+$ export TF_VAR_enable_mysql_listener="false"
 ```
 
 Port `3036` is enabled on the Network Load Balancer that connects to the Teleport MySQL listener port. Required for MySQL connections, if not using TLS routing.
@@ -272,7 +272,7 @@ Port `3036` is enabled on the Network Load Balancer that connects to the Telepor
 ### enable\_postgres\_listener
 
 ```code
-export TF_VAR_enable_postgres_listener="false"
+$ export TF_VAR_enable_postgres_listener="false"
 ```
 
 Port `5432` is enabled on the Network Load Balancer that connects to the Teleport PostgreSQL listener port. Required for PostgreSQL connections, if not using TLS routing.
@@ -280,7 +280,7 @@ Port `5432` is enabled on the Network Load Balancer that connects to the Telepor
 ### s3\_bucket_name
 
 ```code
-export TF_VAR_s3_bucket_name="teleport-example"
+$ export TF_VAR_s3_bucket_name="teleport-example"
 ```
 
 The Terraform example also provisions an S3 bucket to hold certificates provisioned by LetsEncrypt and distribute these
@@ -293,7 +293,7 @@ Remember that S3 bucket names must be globally unique, so if you see errors rela
 ### email
 
 ```code
-export TF_VAR_email="support@example.com"
+$ export TF_VAR_email="support@example.com"
 ```
 
 LetsEncrypt requires an email address for every certificate registered which can be used to send notifications and
@@ -302,7 +302,7 @@ useful information. We recommend a generic ops/support email address which the t
 ### grafana_pass
 
 ```code
-export TF_VAR_grafana_pass="CHANGE_THIS_VALUE"
+$ export TF_VAR_grafana_pass="CHANGE_THIS_VALUE"
 ```
 
 We deploy Grafana along with every Terraform deployment and automatically make stats on cluster usage available in
@@ -318,7 +318,7 @@ to a known value at the outset.
 ### use_acm
 
 ```code
-export TF_VAR_use_acm="true"
+$ export TF_VAR_use_acm="true"
 ```
 
 If set to the string `"false"`, Terraform will use [LetsEncrypt](https://letsencrypt.org/) to provision the public-facing
@@ -341,7 +341,7 @@ We recommend using ACM if possible as it will simplify certificate management fo
 ### use_tls_routing
 
 ```code
-export TF_VAR_use_tls_routing="true"
+$ export TF_VAR_use_tls_routing="true"
 ```
 
 If set to the string `true`, Teleport will use [TLS routing](https://goteleport.com/docs/architecture/tls-routing/) to multiplex all traffic over a single port.
@@ -355,10 +355,10 @@ For the simplest, cheapest deployment, enable both ACM and TLS routing to funnel
 
 Our reference deployment will provision the following instances for your cluster using AWS Auto Scaling Groups (ASG) with these default settings:
 
-- 2 x `m4.large` Teleport **auth** instances in an ASG, behind an internal network load balancer, configured using DynamoDB for
+- 2 x `m4.large` Teleport Auth Service instances in an ASG, behind an internal network load balancer, configured using DynamoDB for
   shared storage. [The desired size of the ASG is configured here](https://github.com/gravitational/teleport/blob/branch/v(=teleport.major_version=)/examples/aws/terraform/ha-autoscale-cluster/auth_asg.tf#L11)
-- 2 x `m4.large` Teleport **proxy** instances in an ASG, behind a public-facing load balancer - NLB for LetsEncrypt, ALB for ACM. [The desired size of the ASG is configured here](https://github.com/gravitational/teleport/blob/branch/v(=teleport.major_version=)/examples/aws/terraform/ha-autoscale-cluster/proxy_asg.tf#L12)
-- 1 x `m4.large` Teleport **node** instance in an ASG. Server instances in this ASG will join with Teleport SSH Service enabled and connected to the **auth**
+- 2 x `m4.large` Teleport Proxy Service instances in an ASG, behind a public-facing load balancer - NLB for LetsEncrypt, ALB for ACM. [The desired size of the ASG is configured here](https://github.com/gravitational/teleport/blob/branch/v(=teleport.major_version=)/examples/aws/terraform/ha-autoscale-cluster/proxy_asg.tf#L12)
+- 1 x `m4.large` Teleport SSH Service instance in an ASG. Server instances in this ASG will join with Teleport SSH Service enabled and connected to the **auth**
   service. [The desired size of the ASG is configured here](https://github.com/gravitational/teleport/blob/branch/v(=teleport.major_version=)/examples/aws/terraform/ha-autoscale-cluster/node_asg.tf#L10)
 - 1 x `m4.large` monitoring server in an ASG which hosts the Grafana instance and receives monitoring data from each service in the cluster. [The desired size of the ASG is configured here](https://github.com/gravitational/teleport/blob/branch/v(=teleport.major_version=)/examples/aws/terraform/ha-autoscale-cluster/monitor_asg.tf#L12)
 - 1 x `t2.medium` bastion server which is the only permitted source for inbound SSH traffic to the instances. This is done
@@ -414,21 +414,21 @@ to the AWS load balancer.
 
 <Tabs>
   <TabItem label="With TLS routing">
-  With [`use_tls_routing`](#use_tls_routing) set to `true`, all Teleport SSH, tunnel, Kubernetes and database traffic will also flow through port 443\
+  With [`use_tls_routing`](#use_tls_routing) set to `true`, all Teleport SSH, tunnel, Kubernetes and database traffic will also flow through port 443
   on the same hostname as set in [`route53_domain`](#route53\_domain).
   </TabItem>
 
   <TabItem label="Without TLS routing">
   With [`use_tls_routing`](#use_tls_routing) set to `false`:
 
-  - Teleport's proxy SSH interface will be available via a network load balancer with an AWS-controlled hostname on port 3023.
+  - The SSH interface of the Teleport Proxy Service will be available via a network load balancer with an AWS-controlled hostname on port 3023.
   This is the default port used when connecting with the `tsh` client and will not require any additional configuration.
 
-  - Teleport's tunnel interface will be available via the same network load balancer with
+  - The reverse tunnel listener of the Teleport Proxy Service will be available via the same network load balancer with
   an AWS-controlled hostname on port 3024. This allows trusted clusters and nodes
-  connected via node tunneling to access the cluster.
+  connected via reverse tunnel to access the cluster.
 
-  - Teleport's Kubernetes interface will be available via the same network load balancer with
+  - The Kubernetes listener of the Teleport Proxy Service will be available via the same network load balancer with
   an AWS-controlled hostname on port 3026. This allows Kubernetes clients to access Kubernetes clusters via the Teleport cluster.
 
   - If the [MongoDB listener port is enabled](#enable_mongodb_listener), it will be available via the same network load balancer with
@@ -440,7 +440,7 @@ to the AWS load balancer.
   - If the [Postgres listener port is enabled](#enable_postgres_listener), it will be available via the same network load balancer with
   an AWS-controlled hostname on port 5432. This allows clients to connect to Postgres databases registered with the Teleport cluster.
 
-  After deploying, you can get the hostname of the proxy/tunnel network load balancer if needed with this command:
+  After deploying, you can get the hostname of the Teleport Proxy Service network load balancer if needed with this command:
 
   ```code
   $ aws elbv2 describe-load-balancers --names "${TF_VAR_cluster_name}-proxy" --query "LoadBalancers[*].DNSName" --output text
@@ -449,9 +449,9 @@ to the AWS load balancer.
   </TabItem>
 </Tabs>
 
-Teleport's auth server interface will be available via an internal load balancer with an AWS-controlled hostname on port 3025.
+Teleport's Auth Service listener will be available via an internal load balancer with an AWS-controlled hostname on port 3025.
 
-After deploying, you can get the hostname of the internal auth load balancer if needed with this command:
+After deploying, you can get the hostname of the internal Auth Service load balancer if needed with this command:
 
 ```code
 $ aws elbv2 describe-load-balancers --names "${TF_VAR_cluster_name}-auth" --query "LoadBalancers[*].DNSName" --output text
@@ -530,80 +530,80 @@ https://teleport.example.com
 
 ### Adding an admin user to the Teleport cluster
 
-To add users to the Teleport cluster, you will need to connect to a Teleport auth server via SSH and run the `tctl` command.
+To add users to the Teleport cluster, you will need to connect to a Teleport Auth Service instance via SSH and run the `tctl` command.
 
-1 - Get the public IP of the bastion server using `terraform output -raw bastion_ip_public`:
+1. Get the public IP of the bastion server using `terraform output -raw bastion_ip_public`:
 
-```code
-$ export BASTION_IP=$(terraform output -raw bastion_ip_public)
-$ echo ${BASTION_IP}
-# 1.2.3.4
-```
+   ```code
+   $ export BASTION_IP=$(terraform output -raw bastion_ip_public)
+   $ echo ${BASTION_IP}
+   # 1.2.3.4
+   ```
 
-2 - Get the IP of an auth server by using `terraform output -json auth_instance_private_ips` and piping to `awk` to extract the first IP.
+1. Get the IP of an Auth Service instance by using `terraform output -json auth_instance_private_ips` and piping to `awk` to extract the first IP.
 
-```code
-$ export AUTH_IP=$(terraform output -json auth_instance_private_ips | awk -F\" '{print $2}')
-$ echo ${AUTH_IP}
-# 172.31.0.196
-```
+   ```code
+   $ export AUTH_IP=$(terraform output -json auth_instance_private_ips | awk -F\" '{print $2}')
+   $ echo ${AUTH_IP}
+   # 172.31.0.196
+   ```
 
-3 - Use both these values to SSH into the auth server. Make sure that the AWS keypair that you specified in the
-[`key_name`](#key_name) variable is available in the current directory, or update the `-i` parameter to point to it:
+1. Use both these values to SSH into the Auth Service instance. Make sure that the AWS keypair that you specified in the
+   [`key_name`](#key_name) variable is available in the current directory, or update the `-i` parameter to point to it:
 
-```code
-$ export KEY_NAME=$(terraform output -raw key_name)
-$ ssh -i ${KEY_NAME}.pem -o ProxyCommand="ssh -i ${KEY_NAME}.pem -W '[%h]:%p' ec2-user@${BASTION_IP}" ec2-user@${AUTH_IP}
-# The authenticity of host '1.2.3.4 (1.2.3.4)' can't be established.
-# ECDSA key fingerprint is SHA256:vFPnCFliRsRQ1Dk+muIv2B1Owm96hXiihlOUsj5H3bg.
-# Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
-# Warning: Permanently added '1.2.3.4' (ECDSA) to the list of known hosts.
-# The authenticity of host '172.31.0.196 (<no hostip for proxy command>)' can't be established.
-# ECDSA key fingerprint is SHA256:vFPnCFliRsRQ1Dk+muIv2B1Owm96hXiihlOUsj5H3bg.
-# Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
-# Warning: Permanently added '172.31.0.196' (ECDSA) to the list of known hosts.
-# Last login: Tue Mar  3 18:57:12 2020 from 1.2.3.5
+   ```code
+   $ export KEY_NAME=$(terraform output -raw key_name)
+   $ ssh -i ${KEY_NAME}.pem -o ProxyCommand="ssh -i ${KEY_NAME}.pem -W '[%h]:%p' ec2-user@${BASTION_IP}" ec2-user@${AUTH_IP}
+   # The authenticity of host '1.2.3.4 (1.2.3.4)' can't be established.
+   # ECDSA key fingerprint is SHA256:vFPnCFliRsRQ1Dk+muIv2B1Owm96hXiihlOUsj5H3bg.
+   # Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+   # Warning: Permanently added '1.2.3.4' (ECDSA) to the list of known hosts.
+   # The authenticity of host '172.31.0.196 (<no hostip for proxy command>)' can't be established.
+   # ECDSA key fingerprint is SHA256:vFPnCFliRsRQ1Dk+muIv2B1Owm96hXiihlOUsj5H3bg.
+   # Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+   # Warning: Permanently added '172.31.0.196' (ECDSA) to the list of known hosts.
+   # Last login: Tue Mar  3 18:57:12 2020 from 1.2.3.5
 
-#       __|  __|_  )
-#       _|  (     /   Amazon Linux 2 AMI
-#      ___|\___|___|
+   #       __|  __|_  )
+   #       _|  (     /   Amazon Linux 2 AMI
+   #      ___|\___|___|
 
-# https://aws.amazon.com/amazon-linux-2/
-# 1 package(s) needed for security, out of 6 available
-# Run "sudo yum update" to apply all updates.
-# [ec2-user@ip-172-31-0-196 ~]$
-```
+   # https://aws.amazon.com/amazon-linux-2/
+   # 1 package(s) needed for security, out of 6 available
+   # Run "sudo yum update" to apply all updates.
+   # [ec2-user@ip-172-31-0-196 ~]$
+   ```
 
-4 - Use the `tctl` command to create an admin user for Teleport:
+1. Use the `tctl` command to create an admin user for Teleport:
 
-<Tabs>
-  <TabItem scope={["oss"]} label="Teleport Community Edition">
-  ```code
-  # From EC2 auth server host
-  $ sudo tctl users add teleport-admin --roles=editor,access --logins=root,ec2-user
-  # User "teleport-admin" has been created but requires a password. Share this URL with the user to complete user setup, link is valid for 1h:
-  # https://teleport.example.com:443/web/newuser/6489ae886babf4232826076279bcb2fb
+   <Tabs>
+     <TabItem scope={["oss"]} label="Teleport Community Edition">
+     ```code
+     # From an EC2 Auth Service host
+     $ sudo tctl users add teleport-admin --roles=editor,access --logins=root,ec2-user
+     # User "teleport-admin" has been created but requires a password. Share this URL with the user to complete user setup, link is valid for 1h:
+     # https://teleport.example.com:443/web/newuser/6489ae886babf4232826076279bcb2fb
 
-  # NOTE: Make sure teleport.example.com:443 points at a Teleport proxy which users can access.
-  ```
-  </TabItem>
-  <TabItem scope={["enterprise", "cloud"]} label="Commercial">
-  ```code
-  # From EC2 auth server host
-  $ sudo tctl users add teleport-admin --roles=editor,access,reviewer --logins=root,ec2-user
-  # User "teleport-admin" has been created but requires a password. Share this URL with the user to complete user setup, link is valid for 1h:
-  # https://teleport.example.com:443/web/newuser/6489ae886babf4232826076279bcb2fb
+     # NOTE: Make sure teleport.example.com:443 points at a Teleport proxy which users can access.
+     ```
+     </TabItem>
+     <TabItem scope={["enterprise", "cloud"]} label="Commercial">
+     ```code
+     # From an EC2 Auth Service host
+     $ sudo tctl users add teleport-admin --roles=editor,access,reviewer --logins=root,ec2-user
+     # User "teleport-admin" has been created but requires a password. Share this URL with the user to complete user setup, link is valid for 1h:
+     # https://teleport.example.com:443/web/newuser/6489ae886babf4232826076279bcb2fb
 
-  # NOTE: Make sure teleport.example.com:443 points at a Teleport proxy which users can access.
-  ```
-  </TabItem>
-</Tabs>
+     # NOTE: Make sure teleport.example.com:443 points at a Teleport proxy which users can access.
+     ```
+     </TabItem>
+   </Tabs>
 
-5 - Click the link to launch the Teleport web UI and finish setting up your user. You can choose whether to use a WebAuthn-compatible hardware key
-(like a Yubikey, passkey or Touch ID) or a scan a QR code with a TOTP-compatible app like Google Authenticator or Authy.
-You will also set a password for the `teleport-admin` user on this page.
+1. Click the link to launch the Teleport web UI and finish setting up your user. You can choose whether to use a WebAuthn-compatible hardware key
+   (like a Yubikey, passkey or Touch ID) or a scan a QR code with a TOTP-compatible app like Google Authenticator or Authy.
+   You will also set a password for the `teleport-admin` user on this page.
 
-Once this user is successfully configured, you should be logged into the Teleport web UI.
+   Once this user is successfully configured, you should be logged into the Teleport web UI.
 
 ### Logging into the cluster with tsh
 
@@ -689,26 +689,23 @@ You can get detailed logs for the Teleport Auth Service using the `journalctl` c
 $ journalctl -u teleport-auth.service
 ```
 
-Remember that there is more than one auth server in an High Availability deployment. You should use this command to get the IP addresses
-of each auth server that you'll need to connect to:
+Remember that there is more than one Teleport Auth Service instance in an High Availability deployment. You should use this command to get the IP addresses
+of each Auth Service instance that you'll need to connect to:
 
 ```code
 $ terraform output -json auth_instance_private_ips
 ["172.31.0.33","172.31.1.136"]
 ```
 
-You can run `tctl` commands on **any** of the auth instances connected to your cluster, however.
+You can run `tctl` commands on **any** of the Teleport Auth Service instances connected to your cluster, however.
 
 ### Teleport Proxy Service
 
-The `systemd` service name for the proxy is different between Let's Encrypt (`teleport-proxy.service`) and ACM (`teleport-proxy-acm.service`).
+The `systemd` service name for the Teleport Proxy Service is different between Let's Encrypt (`teleport-proxy.service`) and ACM (`teleport-proxy-acm.service`).
 
 <Tabs>
   <TabItem label="If using ACM">
-
-  <Admonition type="note">
-    You are using ACM if your `use_acm` variable is set to `"true"`.
-  </Admonition>
+  You are using ACM if your `use_acm` variable is set to `"true"`.
 
   ```code
   $ systemctl status teleport-proxy-acm.service
@@ -732,9 +729,7 @@ The `systemd` service name for the proxy is different between Let's Encrypt (`te
   </TabItem>
   <TabItem label="If using Let's Encrypt">
 
-  <Admonition type="note">
-    You are using LetsEncrypt if your `use_acm` variable is set to `"false"`.
-  </Admonition>
+  You are using LetsEncrypt if your `use_acm` variable is set to `"false"`.
 
   ```code
   $ systemctl status teleport-proxy.service
@@ -759,7 +754,7 @@ The `systemd` service name for the proxy is different between Let's Encrypt (`te
   </TabItem>
 </Tabs>
 
-Remember that there is more than one proxy instance in an High Availability deployment. You can use this command to get the IP addresses
+Remember that there is more than one Teleport Proxy Service instance in an High Availability deployment. You can use this command to get the IP addresses
 of each proxy instance that you'd need to connect to for checking logs:
 
 ```code
@@ -767,7 +762,7 @@ $ terraform output -json proxy_instance_private_ips
 ["172.31.2.221","172.31.3.12"]
 ```
 
-### Teleport Node Service
+### Teleport SSH Service
 
 ```code
 $ systemctl status teleport-node.service
@@ -783,7 +778,7 @@ $ systemctl status teleport-node.service
 # Mar 05 17:18:25 ip-172-31-11-69.ec2.internal /usr/bin/teleport[4456]: INFO [AUDIT:1]   Setting directory /var/lib/teleport/log/upload/sessions owner...o:1639
 ```
 
-You can get detailed logs for the Teleport Node Service using the `journalctl` command:
+You can get detailed logs for the Teleport SSH Service using the `journalctl` command:
 
 ```code
 $ journalctl -u teleport-node.service
@@ -804,7 +799,7 @@ To add new nodes/EC2 servers that you can "SSH into" you'll need to:
 - [Add Nodes to the Teleport
   cluster](../../agents/join-services-to-your-cluster.mdx)
 
-### Getting the Node join token
+### Getting the SSH Service join token
 
 You can use this command to get a join token for your Teleport cluster:
 
@@ -814,15 +809,15 @@ $ aws ssm get-parameter --region <Var name="us-west-2" /> --name "/teleport/${CL
 # 992a9725-0a64-428d-8e5e-308e6877743d
 ```
 
-You can also generate a Node join token using `tctl tokens add --type=node` [as detailed here in our admin guide](../../agents/join-services-to-your-cluster/join-token.mdx).
+You can also generate an SSH Service join token using `tctl tokens add --type=node` [as detailed here in our admin guide](../../agents/join-services-to-your-cluster/join-token.mdx).
 
-### Joining Nodes to the cluster
+### Joining agents to the cluster
 
 As mentioned above, the easiest way to quickly join new resources to your cluster is to use the "Enroll New Resource" wizards in the Teleport web UI.
 
-To manually join Teleport Nodes to your cluster, you will need [a node join token](../../agents/join-services-to-your-cluster/join-token.mdx).
+To manually join Teleport agents to your cluster, you will need [a node join token](../../agents/join-services-to-your-cluster/join-token.mdx).
 
-You should join your nodes using the public facing proxy address - `teleport.example.com:443` for our
+You should join your agents using the public facing Proxy Service address - `teleport.example.com:443` for our
 example.
 
 ```yaml
@@ -832,7 +827,7 @@ teleport:
 
 ### Trusted Clusters
 
-To add a Trusted Cluster, you'll need the public facing proxy address.
+To add a trusted cluster, you'll need the public facing proxy address.
 
 In this example, the `web_proxy_addr` in the trusted cluster configuration should be set up like this:
 
@@ -842,7 +837,7 @@ spec:
 ```
 
 You can generate a token for adding the trusted cluster using `tctl tokens add --type=trusted_cluster` after connecting
-to an auth server. Follow the instructions in our [Trusted Clusters guide](../../management/admin/trustedclusters.mdx).
+to a Teleport Auth Service instance. Follow the instructions in our [Trusted Clusters guide](../../management/admin/trustedclusters.mdx).
 
 ## Script to quickly connect to instances
 
@@ -885,19 +880,19 @@ ssh -i ${KEYPAIR_NAME?}.pem -o ProxyCommand="ssh -i ${KEYPAIR_NAME?}.pem -W '[%h
 Save this as `connect.sh`, run `chmod +x connect.sh` to make it executable, then use it like so:
 
 ```code
-# connect to the first auth server
+# Connect to the first Teleport Auth Service instance
 $ ./connect.sh auth 0
 
-# connect to the second auth server
+# connect to the second Teleport Auth Service instance
 $ ./connect.sh auth 1
 
-# connect to the first proxy server
+# connect to the first Teleport Proxy Service instance
 $ ./connect.sh proxy 0
 
-# connect to the second proxy server
+# connect to the second Teleport Proxy Service instance
 $ ./connect.sh proxy 1
 
-# connect to the node
+# connect to the example Teleport SSH Service instance
 $ ./connect.sh node
 ```
 
