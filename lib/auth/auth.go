@@ -3475,6 +3475,14 @@ func (a *Server) ExtendWebSession(ctx context.Context, req WebSessionReq, identi
 		accessRequests = nil
 	}
 
+	// Create a new web session with the same private key. This way, if the
+	// original session was an attested web session, the extended session will
+	// also be an attested web session.
+	prevKey, err := keys.ParsePrivateKey(prevSession.GetPriv())
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
 	sessionTTL := utils.ToTTL(a.clock, expiresAt)
 	sess, err := a.NewWebSession(ctx, types.NewWebSessionRequest{
 		User:                 req.User,
@@ -3484,6 +3492,7 @@ func (a *Server) ExtendWebSession(ctx context.Context, req WebSessionReq, identi
 		SessionTTL:           sessionTTL,
 		AccessRequests:       accessRequests,
 		RequestedResourceIDs: allowedResourceIDs,
+		PrivateKey:           prevKey,
 	})
 	if err != nil {
 		return nil, trace.Wrap(err)
@@ -4110,9 +4119,11 @@ func (a *Server) NewWebSession(ctx context.Context, req types.NewWebSessionReque
 		return nil, trace.Wrap(err)
 	}
 
-	priv, err := native.GeneratePrivateKey()
-	if err != nil {
-		return nil, trace.Wrap(err)
+	if req.PrivateKey == nil {
+		req.PrivateKey, err = native.GeneratePrivateKey()
+		if err != nil {
+			return nil, trace.Wrap(err)
+		}
 	}
 
 	sessionTTL := req.SessionTTL
@@ -4123,21 +4134,20 @@ func (a *Server) NewWebSession(ctx context.Context, req types.NewWebSessionReque
 	if req.AttestWebSession {
 		// Upsert web session attestation data so that this key's certs
 		// will be marked with the web session private key policy.
-		webAttData, err := services.NewWebSessionAttestationData(priv.Public())
+		webAttData, err := services.NewWebSessionAttestationData(req.PrivateKey.Public())
 		if err != nil {
 			return nil, trace.Wrap(err)
 		}
 		if err = a.UpsertKeyAttestationData(ctx, webAttData, sessionTTL); err != nil {
 			return nil, trace.Wrap(err)
 		}
-
 	}
 
 	certs, err := a.generateUserCert(certRequest{
 		user:           userState,
 		loginIP:        req.LoginIP,
 		ttl:            sessionTTL,
-		publicKey:      priv.MarshalSSHPublicKey(),
+		publicKey:      req.PrivateKey.MarshalSSHPublicKey(),
 		checker:        checker,
 		traits:         req.Traits,
 		activeRequests: services.RequestIDs{AccessRequests: req.AccessRequests},
@@ -4162,7 +4172,7 @@ func (a *Server) NewWebSession(ctx context.Context, req types.NewWebSessionReque
 
 	sessionSpec := types.WebSessionSpecV2{
 		User:               req.User,
-		Priv:               priv.PrivateKeyPEM(),
+		Priv:               req.PrivateKey.PrivateKeyPEM(),
 		Pub:                certs.SSH,
 		TLSCert:            certs.TLS,
 		Expires:            startTime.UTC().Add(sessionTTL),
