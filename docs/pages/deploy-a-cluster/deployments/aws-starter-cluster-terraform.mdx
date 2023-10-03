@@ -223,8 +223,8 @@ $ export TF_VAR_license_path="/home/user/license.pem"
 This license will be uploaded to AWS SSM and automatically downloaded to the Teleport instance in order to enable
 Teleport Enterprise functionality.
 
-(OSS users can run `touch /tmp/license.pem` locally to create an empty file, and then provide the path '/tmp/license.pem'
-here. The license file isn't used in a Teleport OSS install)
+(Teleport Community Edition users can run `touch /tmp/license.pem` locally to create an empty file, and then provide the path '/tmp/license.pem'
+here. The license file isn't used in Teleport Community Edition installs.)
 
 ### route53\_zone
 
@@ -593,7 +593,7 @@ You can use the Teleport command line tool (`tsh`) to log into your Teleport clu
 
 You can [download the Teleport package containing the `tsh` client from here](https://goteleport.com/download)
 
-- The client is the same for both OSS and Enterprise versions of Teleport.
+- The client is the same for both Teleport Community Edition and Teleport Enterprise.
 
 <Tabs>
   <TabItem scope={["oss"]} label="Teleport Community Edition">
