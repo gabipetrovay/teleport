@@ -1552,7 +1552,7 @@ func (a *ServerWithRoles) ListUnifiedResources(ctx context.Context, req *proto.L
 	elapsedFetch = time.Since(startFetch)
 	elapsedFilter = time.Since(startFilter)
 
-	paginatedResources, err := services.MakePaginatedResources(types.KindUnifiedResource, resp.Resources)
+	paginatedResources, err := services.MakePaginatedResources(types.KindUnifiedResource, unifiedResources)
 	if err != nil {
 		return nil, trace.Wrap(err, "making paginated unified resources")
 	}
