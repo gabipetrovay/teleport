@@ -209,9 +209,9 @@ func (c *UnifiedResourceCache) getRange(ctx context.Context, startKey []byte, ma
 		}
 		iterateRange(&item{Key: startKey}, &item{Key: endKey}, func(item *item) bool {
 			// get resource from resource map
-			resourceFromMap := cache.resources[item.Value]
-			if resourceFromMap == nil {
-				// continue the ascend. maybe we should throw an error?
+			resourceFromMap, ok := cache.resources[item.Value]
+			if !ok {
+				// skip and continue
 				return true
 			}
 
@@ -697,7 +697,6 @@ type item struct {
 const (
 	prefix = "unified_resource"
 )
-
 
 const (
 	SortByName string = "name"
