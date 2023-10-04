@@ -152,7 +152,6 @@ function renderUsersCell({ parties }: Session) {
   return <Cell>{users}</Cell>;
 }
 
-
 type Props = {
   sessions: Session[];
   pageSize?: number;
