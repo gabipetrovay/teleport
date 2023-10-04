@@ -41,6 +41,7 @@ import (
 	devicepb "github.com/gravitational/teleport/api/gen/proto/go/teleport/devicetrust/v1"
 	loginrulepb "github.com/gravitational/teleport/api/gen/proto/go/teleport/loginrule/v1"
 	"github.com/gravitational/teleport/api/types"
+	"github.com/gravitational/teleport/api/types/externalcloudaudit"
 	"github.com/gravitational/teleport/api/types/installers"
 	"github.com/gravitational/teleport/lib/auth"
 	"github.com/gravitational/teleport/lib/client"
@@ -1141,7 +1142,7 @@ func (rc *ResourceCommand) Delete(ctx context.Context, client auth.ClientI) (err
 		if err := client.ExternalCloudAuditClient().DeleteExternalCloudAudit(ctx, rc.ref.Name); err != nil {
 			return trace.Wrap(err)
 		}
-		fmt.Printf("external cloud audit configuration has been reset to defaults\n")
+		fmt.Printf("external cloud audit configuration has been deleted\n")
 	case types.KindClusterExternalCloudAudit:
 		if err := client.ExternalCloudAuditClient().DisableClusterExternalCloudAudit(ctx); err != nil {
 			return trace.Wrap(err)
@@ -2087,7 +2088,15 @@ func (rc *ResourceCommand) getCollection(ctx context.Context, client auth.Client
 			}
 		}
 		return &userGroupCollection{userGroups: resources}, nil
-
+	case types.KindExternalCloudAudit:
+		if rc.ref.Name != "" {
+			out, err := client.ExternalCloudAuditClient().GetExternalCloudAudit(ctx, rc.ref.Name)
+			if err != nil {
+				return nil, trace.Wrap(err)
+			}
+			return &externalCloudAuditCollection{externalCloudAudits: []*externalcloudaudit.ExternalCloudAudit{out}}, nil
+		}
+		// TODO(tobiaszheller): listing all external audits.
 	case types.KindIntegration:
 		if rc.ref.Name != "" {
 			ig, err := client.GetIntegration(ctx, rc.ref.Name)

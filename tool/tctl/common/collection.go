@@ -30,6 +30,7 @@ import (
 	devicepb "github.com/gravitational/teleport/api/gen/proto/go/teleport/devicetrust/v1"
 	loginrulepb "github.com/gravitational/teleport/api/gen/proto/go/teleport/loginrule/v1"
 	"github.com/gravitational/teleport/api/types"
+	"github.com/gravitational/teleport/api/types/externalcloudaudit"
 	apiutils "github.com/gravitational/teleport/api/utils"
 	"github.com/gravitational/teleport/lib/asciitable"
 	"github.com/gravitational/teleport/lib/devicetrust"
@@ -983,6 +984,7 @@ func (c *integrationCollection) resources() (r []types.Resource) {
 	}
 	return r
 }
+
 func (c *integrationCollection) writeText(w io.Writer, verbose bool) error {
 	sort.Sort(types.Integrations(c.integrations))
 	var rows [][]string
@@ -998,6 +1000,34 @@ func (c *integrationCollection) writeText(w io.Writer, verbose bool) error {
 		})
 	}
 	headers := []string{"Name", "Type", "Spec"}
+	t := asciitable.MakeTable(headers, rows...)
+	_, err := t.AsBuffer().WriteTo(w)
+	return trace.Wrap(err)
+}
+
+type externalCloudAuditCollection struct {
+	externalCloudAudits []*externalcloudaudit.ExternalCloudAudit
+}
+
+func (c *externalCloudAuditCollection) resources() (r []types.Resource) {
+	for _, a := range c.externalCloudAudits {
+		r = append(r, a)
+	}
+	return r
+}
+
+func (c *externalCloudAuditCollection) writeText(w io.Writer, verbose bool) error {
+	var rows [][]string
+	for _, a := range c.externalCloudAudits {
+		specProps := []string{}
+
+		specProps = append(specProps, fmt.Sprintf("SessionsRecordingsURI=%s", a.Spec.SessionsRecordingsURI))
+
+		rows = append(rows, []string{
+			a.GetName(), strings.Join(specProps, ","),
+		})
+	}
+	headers := []string{"Name", "Spec"}
 	t := asciitable.MakeTable(headers, rows...)
 	_, err := t.AsBuffer().WriteTo(w)
 	return trace.Wrap(err)
