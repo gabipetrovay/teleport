@@ -17,7 +17,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { Box, ButtonSecondary, Flex, Indicator, Link, Text } from 'design';
-import { Danger } from 'design/Alert';
 import * as Icons from 'design/Icon';
 import { FetchStatus } from 'design/DataTable/types';
 import FieldInput from 'shared/components/FieldInput';
@@ -55,6 +54,7 @@ import {
   AlternateInstructionButton,
   Mark,
   SecurityGroupPicker,
+  ButtonBlueText,
 } from '../../../Shared';
 
 import { DeployServiceProp } from '../DeployService';
@@ -180,8 +180,8 @@ export function AutoDeploy({ toggleDeployMethod }: DeployServiceProp) {
 
             {/* step two */}
             <StyledBox mb={5}>
-              <Text bold>Step 2</Text>
               <Box>
+                <Text bold>Step 2 (Optional)</Text>
                 <Labels
                   labels={labels}
                   setLabels={setLabels}
@@ -202,12 +202,17 @@ export function AutoDeploy({ toggleDeployMethod }: DeployServiceProp) {
                 dbMeta={dbMeta}
                 emitErrorEvent={emitErrorEvent}
               />
+            </StyledBox>
+
+            <StyledBox mb={5}>
+              <Text bold>Step 4</Text>
+              <Text mb={2}>Deploy the Teleport Database Service.</Text>
               <ButtonSecondary
                 width="215px"
                 type="submit"
                 onClick={() => handleDeploy(validator)}
                 disabled={attempt.status === 'processing'}
-                mt={4}
+                mt={2}
                 mb={2}
               >
                 Deploy Teleport Service
@@ -397,7 +402,7 @@ const SelectSecurityGroups = ({
   const {
     attempt: fetchSecurityGroupsAttempt,
     setAttempt: setFetchSecurityGroupsAttempt,
-  } = useAttempt('');
+  } = useAttempt('processing');
 
   function onSelectSecurityGroup(
     sg: SecurityGroup,
@@ -444,8 +449,8 @@ const SelectSecurityGroups = ({
 
   return (
     <>
-      <Text bold>Step 3</Text>
-      <Text bold>Optionally Select Security Groups</Text>
+      <Text bold>Step 3 (Optional)</Text>
+      <Text bold>Select Security Groups</Text>
       <Text mb={2}>
         Select security groups to assign to the Fargate service that will be
         running the database access agent. The security groups you pick must
@@ -453,7 +458,17 @@ const SelectSecurityGroups = ({
         select any security groups, the default one for the VPC will be used.
       </Text>
       {fetchSecurityGroupsAttempt.status === 'failed' && (
-        <Danger>{fetchSecurityGroupsAttempt.statusText}</Danger>
+        <>
+          <Flex my={3}>
+            <Icons.Warning size="medium" ml={1} mr={2} color="error.main" />
+            <Text>
+              Encountered Error: {fetchSecurityGroupsAttempt.statusText}
+            </Text>
+          </Flex>
+          <ButtonBlueText ml={1} onClick={fetchSecurityGroups}>
+            Retry
+          </ButtonBlueText>
+        </>
       )}
       {fetchSecurityGroupsAttempt.status === 'processing' && (
         <Flex width="904px" justifyContent="center" mt={3}>
