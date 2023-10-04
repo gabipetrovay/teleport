@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import styled from 'styled-components';
-
+import { useRefClickOutside } from 'shared/hooks/useRefClickOutside';
 import { ChevronDownIcon } from 'design/SVGIcon/ChevronDown';
 
 import { NavigationCategory } from 'teleport/Navigation/categories';
@@ -118,7 +118,7 @@ const Arrow = styled.div<OpenProps>`
 export function NavigationSwitcher(props: NavigationSwitcherProps) {
   const [open, setOpen] = useState(false);
 
-  const ref = useRef<HTMLDivElement>();
+  const ref = useRefClickOutside<HTMLDivElement>({ open, setOpen });
   const activeValueRef = useRef<HTMLDivElement>();
   const firstValueRef = useRef<HTMLDivElement>();
 
@@ -126,25 +126,6 @@ export function NavigationSwitcher(props: NavigationSwitcherProps) {
   const requiresAttentionButNotActive = props.items.some(
     item => item.requiresAttention && item.category !== activeItem.category
   );
-
-  const handleClickOutside = useCallback(
-    (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as HTMLElement)) {
-        setOpen(false);
-      }
-    },
-    [ref.current]
-  );
-
-  useEffect(() => {
-    if (open) {
-      document.addEventListener('mousedown', handleClickOutside);
-
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
-    }
-  }, [ref, open, handleClickOutside]);
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
