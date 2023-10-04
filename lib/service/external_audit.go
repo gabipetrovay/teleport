@@ -55,13 +55,29 @@ func (p *ExternalCloudAuditConfigurator) GetExternalAuditConfig() *externalcloud
 	return p.config
 }
 
+func (p *ExternalCloudAuditConfigurator) CredentialsV2() aws.CredentialsProvider {
+	return &v2Provider{credRetrival: p.retrieveCredentialsUsingOIDCIntegration}
+}
+
+type v2Provider struct {
+	credRetrival func(context.Context) (aws.Credentials, error)
+}
+
+func (p *v2Provider) Retrieve(ctx context.Context) (aws.Credentials, error) {
+	credsV2, err := p.credRetrival(ctx)
+	if err != nil {
+		return aws.Credentials{}, trace.Wrap(err)
+	}
+	return credsV2, nil
+}
+
 func (p *ExternalCloudAuditConfigurator) CredentialsV1() *credentials.Credentials {
 	// TODO(tobiaszheller): move provider to separate struct.
 	return credentials.NewCredentials(p)
 }
 
 func (p *ExternalCloudAuditConfigurator) Retrieve() (credentials.Value, error) {
-	credsV2, err := p.generateNewCredentials(context.Background())
+	credsV2, err := p.retrieveCredentialsUsingOIDCIntegration(context.Background())
 	if err != nil {
 		return credentials.Value{}, trace.Wrap(err)
 	}
@@ -105,32 +121,32 @@ func (p *ExternalCloudAuditConfigurator) Start(ctx context.Context) {
 	// take care of creating and refresing expiring credentials.
 }
 
-func (p *ExternalCloudAuditConfigurator) generateNewCredentials(ctx context.Context) (*aws.Credentials, error) {
+func (p *ExternalCloudAuditConfigurator) retrieveCredentialsUsingOIDCIntegration(ctx context.Context) (aws.Credentials, error) {
 	if !p.isGeneratorReady() {
-		return nil, trace.Errorf("generator not set yet")
+		return aws.Credentials{}, trace.Errorf("generator not set yet")
 	}
 	token, err := p.GetAWSOIDCGenerator().GenerateAWSOIDCTokenForExternalAudit(ctx)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return aws.Credentials{}, trace.Wrap(err)
 	}
 	// TODO(tobiaszheller): use grpc service instead of local?
 	integrationSvc, err := local.NewIntegrationsService(p.bk)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return aws.Credentials{}, trace.Wrap(err)
 	}
 	integration, err := integrationSvc.GetIntegration(ctx, p.config.IntegrationName)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return aws.Credentials{}, trace.Wrap(err)
 	}
 	awsoidcSpec := integration.GetAWSOIDCIntegrationSpec()
 	if awsoidcSpec == nil {
-		return nil, trace.BadParameter("missing spec fields for %q (%q) integration", integration.GetName(), integration.GetSubKind())
+		return aws.Credentials{}, trace.BadParameter("missing spec fields for %q (%q) integration", integration.GetName(), integration.GetSubKind())
 	}
 	roleARN := awsoidcSpec.RoleARN
 
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(p.region))
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return aws.Credentials{}, trace.Wrap(err)
 	}
 
 	roleProvider := stscreds.NewWebIdentityRoleProvider(
@@ -143,9 +159,9 @@ func (p *ExternalCloudAuditConfigurator) generateNewCredentials(ctx context.Cont
 	)
 	creds, err := roleProvider.Retrieve(ctx)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return aws.Credentials{}, trace.Wrap(err)
 	}
-	return &creds, nil
+	return creds, nil
 }
 
 // IdentityToken is an implementation of [stscreds.IdentityTokenRetriever] for returning a static token.

@@ -34,6 +34,7 @@ import (
 
 	"github.com/gravitational/teleport"
 	apievents "github.com/gravitational/teleport/api/types/events"
+	"github.com/gravitational/teleport/api/types/externalcloudaudit"
 	"github.com/gravitational/teleport/lib/backend"
 	"github.com/gravitational/teleport/lib/events"
 	"github.com/gravitational/teleport/lib/observability/metrics"
@@ -115,7 +116,11 @@ type Config struct {
 	LogEntry *log.Entry
 	// AWSConfig is AWS config which can be used to construct varius AWS Clients
 	// using aws-sdk-go-v2.
-	AWSConfig *aws.Config
+	// AWSConfig *aws.Config
+
+	PublisherConsumerAWSConfig *aws.Config
+
+	StorerQuerierAWSConfig *aws.Config
 
 	Backend backend.Backend
 
@@ -243,7 +248,7 @@ func (cfg *Config) CheckAndSetDefaults(ctx context.Context) error {
 		})
 	}
 
-	if cfg.AWSConfig == nil {
+	if cfg.PublisherConsumerAWSConfig == nil {
 		awsCfg, err := awsconfig.LoadDefaultConfig(ctx)
 		if err != nil {
 			return trace.Wrap(err)
@@ -254,7 +259,11 @@ func (cfg *Config) CheckAndSetDefaults(ctx context.Context) error {
 			awsCfg.Region = cfg.Region
 		}
 		otelaws.AppendMiddlewares(&awsCfg.APIOptions)
-		cfg.AWSConfig = &awsCfg
+		cfg.PublisherConsumerAWSConfig = &awsCfg
+	}
+
+	if cfg.StorerQuerierAWSConfig == nil {
+		cfg.StorerQuerierAWSConfig = cfg.PublisherConsumerAWSConfig
 	}
 
 	if cfg.Backend == nil {
@@ -357,6 +366,27 @@ func (cfg *Config) SetFromURL(url *url.URL) error {
 	return nil
 }
 
+func (cfg *Config) UpdateBasedOnExternalAuditConfig(ctx context.Context, spec *externalcloudaudit.ExternalCloudAuditSpec, credentialsProvider aws.CredentialsProvider) error {
+	cfg.LocationS3 = spec.AuditEventsLongTermURI
+	cfg.Workgroup = spec.AthenaWorkspace
+	cfg.QueryResultsS3 = spec.AthenaResultsURI
+	cfg.Database = spec.GlueDatabase
+	cfg.TableName = spec.GlueTable
+
+	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithCredentialsProvider(credentialsProvider))
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	// override the default environment (region + credentials) with the values
+	// from the config.
+	if cfg.Region != "" {
+		awsCfg.Region = cfg.Region
+	}
+	otelaws.AppendMiddlewares(&awsCfg.APIOptions)
+	cfg.StorerQuerierAWSConfig = &awsCfg
+	return nil
+}
+
 // Log is an events storage backend.
 //
 // It's using SNS for emitting events.
@@ -391,7 +421,7 @@ func New(ctx context.Context, cfg Config) (*Log, error) {
 		workgroup:               cfg.Workgroup,
 		queryResultsS3:          cfg.QueryResultsS3,
 		getQueryResultsInterval: cfg.GetQueryResultsInterval,
-		awsCfg:                  cfg.AWSConfig,
+		awsCfg:                  cfg.StorerQuerierAWSConfig,
 		logger:                  cfg.LogEntry,
 		clock:                   cfg.Clock,
 		tracer:                  cfg.Tracer,
