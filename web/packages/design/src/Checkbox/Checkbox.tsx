@@ -43,3 +43,37 @@ export const CheckboxInput = styled.input`
 
   ${space}
 `;
+
+export const StyledCheckbox = styled.input.attrs({ type: 'checkbox' })`
+  // reset the appearance so we can style the background
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid ${props => props.theme.colors.text.muted};
+  border-radius: ${props => props.theme.radii[1]}px;
+  background: transparent;
+  position: relative;
+
+  &:checked {
+    border: 1px solid ${props => props.theme.colors.brand};
+    background-color: ${props => props.theme.colors.brand};
+  }
+
+  &:hover {
+    cursor: pointer;
+  }
+
+  &::before {
+    content: '';
+    display: block;
+  }
+
+  &:checked::before {
+    content: '✓';
+    color: ${props => props.theme.colors.levels.deep};
+    position: absolute;
+    right: 1px;
+  }
+`;
