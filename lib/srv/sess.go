@@ -2036,6 +2036,10 @@ func (p *party) closeUnderSessionLock() error {
 // on an interval until the session tracker is closed.
 func (s *session) trackSession(ctx context.Context, teleportUser string, policySet []*types.SessionTrackerPolicySet, p *party) error {
 	s.log.Debugf("Tracking participant: %s", p.id)
+	var initialCommand []string
+	if execRequest, err := s.scx.GetExecRequest(); err == nil {
+		initialCommand = []string{execRequest.GetCommand()}
+	}
 	trackerSpec := types.SessionTrackerSpecV1{
 		SessionID:    s.id.String(),
 		Kind:         string(types.SSHSessionKind),
@@ -2058,6 +2062,7 @@ func (s *session) trackSession(ctx context.Context, teleportUser string, policyS
 		},
 		HostID:        s.registry.Srv.ID(),
 		TargetSubKind: s.serverMeta.ServerSubKind,
+		Command:       initialCommand,
 	}
 
 	if s.scx.env[teleport.EnvSSHSessionInvited] != "" {

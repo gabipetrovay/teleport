@@ -56,6 +56,10 @@ export default function SessionList(props: Props) {
           render: renderUsersCell,
         },
         {
+          key: 'command',
+          headerText: 'Command',
+        },
+        {
           key: 'durationText',
           altSortKey: 'created',
           headerText: 'Duration',
@@ -147,6 +151,7 @@ function renderUsersCell({ parties }: Session) {
   const users = parties.map(({ user }) => `${user}`).join(', ');
   return <Cell>{users}</Cell>;
 }
+
 
 type Props = {
   sessions: Session[];
