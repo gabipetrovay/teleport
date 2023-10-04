@@ -1676,8 +1676,16 @@ func (c *Client) CreateOIDCConnector(ctx context.Context, connector types.OIDCCo
 	if !ok {
 		return nil, trace.BadParameter("invalid type %T", connector)
 	}
-	conn, err := c.grpc.CreateOIDCConnector(ctx, &proto.CreateOIDCConnectorRequest{Connector: oidcConnector})
-	return conn, trace.Wrap(err)
+	resp, err := c.grpc.CreateAuthConnector(ctx, &proto.CreateAuthConnectorRequest{
+		Connector: &proto.CreateAuthConnectorRequest_OIDCConnector{
+			OIDCConnector: oidcConnector,
+		},
+	})
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	return resp.GetOIDCConnector(), nil
 }
 
 // UpdateOIDCConnector updates an OIDC connector.
@@ -1686,17 +1694,33 @@ func (c *Client) UpdateOIDCConnector(ctx context.Context, connector types.OIDCCo
 	if !ok {
 		return nil, trace.BadParameter("invalid type %T", oidcConnector)
 	}
-	conn, err := c.grpc.UpdateOIDCConnector(ctx, &proto.UpdateOIDCConnectorRequest{Connector: oidcConnector})
-	return conn, trace.Wrap(err)
+	resp, err := c.grpc.UpdateAuthConnector(ctx, &proto.UpdateAuthConnectorRequest{
+		Connector: &proto.UpdateAuthConnectorRequest_OIDCConnector{
+			OIDCConnector: oidcConnector,
+		},
+	})
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	return resp.GetOIDCConnector(), nil
 }
 
 // UpsertOIDCConnector creates or updates an OIDC connector.
-func (c *Client) UpsertOIDCConnector(ctx context.Context, oidcConnector types.OIDCConnector) error {
-	connector, ok := oidcConnector.(*types.OIDCConnectorV3)
+func (c *Client) UpsertOIDCConnector(ctx context.Context, connector types.OIDCConnector) error {
+	oidcConnector, ok := connector.(*types.OIDCConnectorV3)
 	if !ok {
 		return trace.BadParameter("invalid type %T", oidcConnector)
 	}
-	_, err := c.grpc.UpsertOIDCConnector(ctx, connector)
+	_, err := c.grpc.UpsertAuthConnector(ctx, &proto.UpsertAuthConnectorRequest{
+		Connector: &proto.UpsertAuthConnectorRequest_OIDCConnector{
+			OIDCConnector: oidcConnector,
+		},
+	})
+	if err != nil && trace.IsNotImplemented(err) {
+		_, err := c.grpc.UpsertOIDCConnector(ctx, oidcConnector)
+		return trace.Wrap(err)
+	}
 	return trace.Wrap(err)
 }
 
@@ -1757,31 +1781,58 @@ func (c *Client) GetSAMLConnectors(ctx context.Context, withSecrets bool) ([]typ
 
 // CreateSAMLConnector creates a SAML connector.
 func (c *Client) CreateSAMLConnector(ctx context.Context, connector types.SAMLConnector) (types.SAMLConnector, error) {
-	samlConnectorV2, ok := connector.(*types.SAMLConnectorV2)
+	samlConnector, ok := connector.(*types.SAMLConnectorV2)
 	if !ok {
 		return nil, trace.BadParameter("invalid type %T", connector)
 	}
-	conn, err := c.grpc.CreateSAMLConnector(ctx, &proto.CreateSAMLConnectorRequest{Connector: samlConnectorV2})
-	return conn, trace.Wrap(err)
+
+	resp, err := c.grpc.CreateAuthConnector(ctx, &proto.CreateAuthConnectorRequest{
+		Connector: &proto.CreateAuthConnectorRequest_SAMLConnector{
+			SAMLConnector: samlConnector,
+		},
+	})
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	return resp.GetSAMLConnector(), nil
 }
 
 // UpdateSAMLConnector updates a SAML connector.
 func (c *Client) UpdateSAMLConnector(ctx context.Context, connector types.SAMLConnector) (types.SAMLConnector, error) {
-	samlConnectorV2, ok := connector.(*types.SAMLConnectorV2)
+	samlConnector, ok := connector.(*types.SAMLConnectorV2)
 	if !ok {
 		return nil, trace.BadParameter("invalid type %T", connector)
 	}
-	conn, err := c.grpc.UpdateSAMLConnector(ctx, &proto.UpdateSAMLConnectorRequest{Connector: samlConnectorV2})
-	return conn, trace.Wrap(err)
+
+	resp, err := c.grpc.UpdateAuthConnector(ctx, &proto.UpdateAuthConnectorRequest{
+		Connector: &proto.UpdateAuthConnectorRequest_SAMLConnector{
+			SAMLConnector: samlConnector,
+		},
+	})
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	return resp.GetSAMLConnector(), nil
 }
 
 // UpsertSAMLConnector creates or updates a SAML connector.
 func (c *Client) UpsertSAMLConnector(ctx context.Context, connector types.SAMLConnector) error {
-	samlConnectorV2, ok := connector.(*types.SAMLConnectorV2)
+	samlConnector, ok := connector.(*types.SAMLConnectorV2)
 	if !ok {
 		return trace.BadParameter("invalid type %T", connector)
 	}
-	_, err := c.grpc.UpsertSAMLConnector(ctx, samlConnectorV2)
+
+	_, err := c.grpc.UpsertAuthConnector(ctx, &proto.UpsertAuthConnectorRequest{
+		Connector: &proto.UpsertAuthConnectorRequest_SAMLConnector{
+			SAMLConnector: samlConnector,
+		},
+	})
+	if err != nil && trace.IsNotImplemented(err) {
+		_, err := c.grpc.UpsertSAMLConnector(ctx, samlConnector)
+		return trace.Wrap(err)
+	}
 	return trace.Wrap(err)
 }
 
@@ -1846,8 +1897,17 @@ func (c *Client) CreateGithubConnector(ctx context.Context, connector types.Gith
 	if !ok {
 		return nil, trace.BadParameter("invalid type %T", connector)
 	}
-	conn, err := c.grpc.CreateGithubConnector(ctx, &proto.CreateGithubConnectorRequest{Connector: githubConnector})
-	return conn, trace.Wrap(err)
+
+	resp, err := c.grpc.CreateAuthConnector(ctx, &proto.CreateAuthConnectorRequest{
+		Connector: &proto.CreateAuthConnectorRequest_GithubConnector{
+			GithubConnector: githubConnector,
+		},
+	})
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	return resp.GetGithubConnector(), nil
 }
 
 // UpdateGithubConnector updates a Github connector.
@@ -1856,8 +1916,16 @@ func (c *Client) UpdateGithubConnector(ctx context.Context, connector types.Gith
 	if !ok {
 		return nil, trace.BadParameter("invalid type %T", connector)
 	}
-	conn, err := c.grpc.UpdateGithubConnector(ctx, &proto.UpdateGithubConnectorRequest{Connector: githubConnector})
-	return conn, trace.Wrap(err)
+	resp, err := c.grpc.UpdateAuthConnector(ctx, &proto.UpdateAuthConnectorRequest{
+		Connector: &proto.UpdateAuthConnectorRequest_GithubConnector{
+			GithubConnector: githubConnector,
+		},
+	})
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	return resp.GetGithubConnector(), nil
 }
 
 // UpsertGithubConnector creates or updates a Github connector.
@@ -1866,7 +1934,16 @@ func (c *Client) UpsertGithubConnector(ctx context.Context, connector types.Gith
 	if !ok {
 		return trace.BadParameter("invalid type %T", connector)
 	}
-	_, err := c.grpc.UpsertGithubConnector(ctx, githubConnector)
+
+	_, err := c.grpc.UpsertAuthConnector(ctx, &proto.UpsertAuthConnectorRequest{
+		Connector: &proto.UpsertAuthConnectorRequest_GithubConnector{
+			GithubConnector: githubConnector,
+		},
+	})
+	if err != nil && trace.IsNotImplemented(err) {
+		_, err := c.grpc.UpsertGithubConnector(ctx, githubConnector)
+		return trace.Wrap(err)
+	}
 	return trace.Wrap(err)
 }
 
