@@ -59,7 +59,8 @@ export function useUrlFiltering(initialSort: SortType): UrlFilteringState {
         queryAfterLabelClick,
         params.sort,
         params.kinds,
-        true /*isAdvancedSearch*/
+        true /*isAdvancedSearch*/,
+        params.pinnedResourcesOnly
       )
     );
   };
@@ -84,6 +85,7 @@ export default function getResourceUrlQueryParams(
   const searchParams = new URLSearchParams(searchPath);
   const query = searchParams.get('query');
   const search = searchParams.get('search');
+  const pinnedResourcesOnly = searchParams.get('pinnedResourcesOnly');
   const sort = searchParams.get('sort');
   const kinds = searchParams.has('kinds') ? searchParams.getAll('kinds') : null;
 
@@ -100,6 +102,7 @@ export default function getResourceUrlQueryParams(
   return {
     query,
     search,
+    pinnedResourcesOnly: pinnedResourcesOnly === 'true',
     kinds,
     // Conditionally adds the sort field based on whether it exists or not
     ...(!!processedSortParam && { sort: processedSortParam }),

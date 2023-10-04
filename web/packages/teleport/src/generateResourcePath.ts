@@ -46,7 +46,11 @@ export default function generateResourcePath(
     .replace(':search?', processedParams.search || '')
     .replace(':searchAsRoles?', processedParams.searchAsRoles || '')
     .replace(':sort?', processedParams.sort || '')
-    .replace(':kinds?', processedParams.kinds || '');
+    .replace(':kinds?', processedParams.kinds || '')
+    .replace(
+      ':pinnedResourcesOnly?',
+      processedParams.pinnedResourcesOnly || ''
+    );
 
   return output;
 }
